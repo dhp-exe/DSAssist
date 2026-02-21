@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+/* small helpers for the visualizer */
+.node-circle { @apply w-14 h-14 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-sm; }
+
+/* animations for visualizer nodes */
+.node-enter { animation: ds-scale-in 240ms cubic-bezier(.2,.8,.2,1) both }
+@keyframes ds-scale-in { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+.visual-highlight { box-shadow: 0 8px 30px rgba(99,102,241,0.12); transform: translateY(-4px); }
+
