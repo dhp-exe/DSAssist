@@ -8,6 +8,7 @@ export default function ControlPanel() {
     randomize, addAtIndex, deleteAtIndex, deleteByValue, updateAtIndex, addItem, deleteItem, 
     treeInsert, treeDelete, treeFind,
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
+    bTreeDegree, setBTreeDegree,
     selectedStructure, implementationMode, setImplementationMode, data, isAnimating 
   } = useStore()
 
@@ -35,7 +36,6 @@ export default function ControlPanel() {
   const handleTreeFind = () => {
       const v = Number(value)
       if (treeFind) treeFind(v);
-      else console.log(`Find ${v} not implemented in store yet`);
   }
 
   return (
@@ -48,26 +48,10 @@ export default function ControlPanel() {
                     <div className="text-xs font-semibold text-slate-500 uppercase">Implementation</div>
                     <div className="flex gap-10 bg-slate-100 p-2 rounded border">
                         <label className="text-sm flex items-center gap-1 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="implementation"
-                                value="Array"
-                                checked={implementationMode === 'Array'}
-                                onChange={() => setImplementationMode('Array')}
-                                disabled={isAnimating}
-                            />
-                            Array
+                            <input type="radio" value="Array" checked={implementationMode === 'Array'} onChange={() => setImplementationMode('Array')} disabled={isAnimating} /> Array
                         </label>
                         <label className="text-sm flex items-center gap-1 cursor-pointer">
-                            <input
-                                type="radio"
-                                name="implementation"
-                                value="Linked List"
-                                checked={implementationMode === 'Linked List'}
-                                onChange={() => setImplementationMode('Linked List')}
-                                disabled={isAnimating}
-                            />
-                            Linked List
+                            <input type="radio" value="Linked List" checked={implementationMode === 'Linked List'} onChange={() => setImplementationMode('Linked List')} disabled={isAnimating} /> Linked List
                         </label>
                     </div>
                 </div>
@@ -87,24 +71,30 @@ export default function ControlPanel() {
                 </div>
             )}
 
-            <input
-                type="number"
-                placeholder="Value (e.g., 42)"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                className="px-2 py-1 border rounded w-full disabled:bg-slate-100"
-                disabled={isAnimating}
-            />
+            {isTree && selectedStructure === 'Trees - B-Tree' && (
+                <div className="flex flex-col gap-1 mb-2">
+                    <div className="text-xs font-semibold text-slate-500 uppercase">Degree (t)</div>
+                    <div className="flex gap-4 bg-slate-100 p-2 rounded border">
+                        {[3, 4, 5].map(d => (
+                            <label key={d} className="text-sm flex items-center gap-1 cursor-pointer">
+                                <input 
+                                    type="radio" 
+                                    name="btree-degree" 
+                                    value={d} 
+                                    checked={bTreeDegree === d} 
+                                    onChange={() => setBTreeDegree(d)} 
+                                    disabled={isAnimating} 
+                                /> {d}
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <input type="number" placeholder="Value (e.g., 42)" value={value} onChange={(e) => setValue(e.target.value)} className="px-2 py-1 border rounded w-full disabled:bg-slate-100" disabled={isAnimating} />
             
             {(isList || isArray) && (
-                <input
-                    type="number"
-                    placeholder="Index (e.g., 2)"
-                    value={index}
-                    onChange={(e) => setIndex(e.target.value)}
-                    className="px-2 py-1 border rounded w-full disabled:bg-slate-100"
-                    disabled={isAnimating}
-                />
+                <input type="number" placeholder="Index (e.g., 2)" value={index} onChange={(e) => setIndex(e.target.value)} className="px-2 py-1 border rounded w-full disabled:bg-slate-100" disabled={isAnimating} />
             )}
             
             {isArray && (

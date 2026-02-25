@@ -4,9 +4,23 @@ import { BST, AVLTree, SplayTree, RedBlackTree, BTree } from '../../algorithms/t
 import { AnimatedEdge, AnimatedNode } from './AnimatedTreeElements'
 
 export default function TreeVisualizer({ type }) {
-  const data = useStore((s) => s.data)
-  const treeActions = useStore((s) => s.treeActions)
-  const highlightNodeValue = useStore((s) => s.highlightNodeValue)
+  const isGeneratingFrames = useStore((s) => s.isGeneratingFrames)
+  const rawData = useStore((s) => s.data)
+  const rawTreeActions = useStore((s) => s.treeActions)
+  const rawHighlight = useStore((s) => s.highlightNodeValue)
+  const rawBTreeDegree = useStore((s) => s.bTreeDegree)
+
+  // Anti-Flash Cache Mechanism
+  const cache = useRef({ data: rawData, treeActions: rawTreeActions, highlightNodeValue: rawHighlight, bTreeDegree: rawBTreeDegree })
+
+  if (!isGeneratingFrames) {
+      cache.current = { data: rawData, treeActions: rawTreeActions, highlightNodeValue: rawHighlight, bTreeDegree: rawBTreeDegree }
+  }
+
+  const data = isGeneratingFrames ? cache.current.data : rawData;
+  const treeActions = isGeneratingFrames ? cache.current.treeActions : rawTreeActions;
+  const highlightNodeValue = isGeneratingFrames ? cache.current.highlightNodeValue : rawHighlight;
+  const bTreeDegree = isGeneratingFrames ? cache.current.bTreeDegree : rawBTreeDegree;
   
   const containerRef = useRef(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
@@ -27,10 +41,9 @@ export default function TreeVisualizer({ type }) {
     if (type === 'Trees - AVL') tree = new AVLTree()
     else if (type === 'Trees - Red-Black') tree = new RedBlackTree()
     else if (type === 'Trees - Splay') tree = new SplayTree()
-    else if (isBTree) tree = new BTree(2) 
+    else if (isBTree) tree = new BTree(bTreeDegree) 
     else tree = new BST() 
 
-    // Replay actions to generate the current specific tree shape (Vital for Splay Trees)
     const actions = treeActions && treeActions.length > 0 ? treeActions : data.map(val => ({op: 'insert', val}));
     
     actions.forEach((a) => {
@@ -91,7 +104,7 @@ export default function TreeVisualizer({ type }) {
     }
 
     return { nodes: nodesList, edges: edgesList }
-  }, [data, treeActions, type, dimensions.width])
+  }, [data, treeActions, type, dimensions.width, bTreeDegree])
 
   if (!nodes || nodes.length === 0) {
     return <div className="h-full flex items-center justify-center text-slate-400">Empty tree — add elements.</div>
@@ -113,7 +126,6 @@ export default function TreeVisualizer({ type }) {
           let isHighlighted = false;
           let isFound = false;
 
-          // Animation highlight resolver
           if (highlightNodeValue !== null) {
               const strVal = String(highlightNodeValue);
               if (strVal.startsWith('FOUND-')) {

@@ -10,7 +10,7 @@ const sleep = async (ms) => {
     const state = useStore.getState();
     if (state.isGeneratingFrames) {
         state._recordFrame();
-        return Promise.resolve(); // Skip actual wait, just capture the frame instantly
+        return Promise.resolve(); 
     }
     return new Promise((resolve) => setTimeout(resolve, ms));
 };
@@ -21,6 +21,7 @@ export const useStore = create((set, get) => ({
     selectedStructure: 'Singly Linked List',
     implementationMode: 'Array', 
     heapMode: 'Min', 
+    bTreeDegree: 3,
     logs: [],
     data: [], 
     nodes: [], 
@@ -52,7 +53,8 @@ export const useStore = create((set, get) => ({
             highlightIndex: state.highlightIndex,
             highlightNodeValue: state.highlightNodeValue,
             highlightIndices: [...state.highlightIndices],
-            highlightType: state.highlightType
+            highlightType: state.highlightType,
+            bTreeDegree: state.bTreeDegree
         });
     },
 
@@ -66,7 +68,8 @@ export const useStore = create((set, get) => ({
             highlightIndex: frame.highlightIndex,
             highlightNodeValue: frame.highlightNodeValue,
             highlightIndices: frame.highlightIndices,
-            highlightType: frame.highlightType
+            highlightType: frame.highlightType,
+            bTreeDegree: frame.bTreeDegree
         });
     },
 
@@ -74,21 +77,21 @@ export const useStore = create((set, get) => ({
         if (get().isAnimating && !get().isGeneratingFrames) return;
         set({ playing: false, isGeneratingFrames: true });
         
-        // Save initial state before operation to allow exact replays
         const initialState = {
             data: JSON.parse(JSON.stringify(get().data)),
             nodes: JSON.parse(JSON.stringify(get().nodes)),
             treeActions: JSON.parse(JSON.stringify(get().treeActions)),
             logs: [...get().logs],
-            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: ''
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            bTreeDegree: get().bTreeDegree
         };
 
         frames = [];
-        get()._recordFrame(); // Frame 0
+        get()._recordFrame(); 
 
         await operationFn(...args);
 
-        get()._recordFrame(); // Final frame
+        get()._recordFrame(); 
 
         set({
             isGeneratingFrames: false,
@@ -99,7 +102,6 @@ export const useStore = create((set, get) => ({
             latestOperation: { fn: operationFn, opName, args, initialState }
         });
 
-        // Apply first frame to start playback cleanly
         get()._applyFrame(frames[0]);
     },
 
@@ -133,7 +135,7 @@ export const useStore = create((set, get) => ({
         if (!latestOperation) return;
         set({ playing: false });
         get()._applyFrame(latestOperation.initialState);
-        setTimeout(() => { // Small delay to visually reset before playing again
+        setTimeout(() => { 
             get()._runWithFrames(latestOperation.fn, latestOperation.opName, latestOperation.args);
         }, 50);
     },
@@ -147,6 +149,14 @@ export const useStore = create((set, get) => ({
     },
 
     // --- UI CONFIGURATIONS ---
+    setBTreeDegree: (degree) => {
+        set({ 
+            bTreeDegree: degree, data: [], nodes: [], treeActions: [],
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null 
+        });
+        get().addLog(`B-Tree degree set to ${degree}. Data cleared.`);
+    },
     setHeapMode: (mode) => {
         set({ heapMode: mode, data: [], highlightIndices: [], frames: [], playing: false, isAnimating: false });
         get().addLog(`Switched Heap mode to ${mode}-Heap. Array cleared.`);
@@ -169,15 +179,24 @@ export const useStore = create((set, get) => ({
     clearLogs: () => set({ logs: [] }),
 
     randomize: (count) => {
-        const n = typeof count === 'number' ? count : (4 + Math.floor(Math.random() * 2))
-        const arr = Array.from({ length: n }, () => randomInt(1, 100))
+        let n;
+        const { selectedStructure, bTreeDegree } = get();
+        if (selectedStructure === 'Trees - B-Tree') {
+            if (bTreeDegree === 3) n = 8;
+            else if (bTreeDegree === 4) n = 9;
+            else if (bTreeDegree === 5) n = 10;
+            else n = typeof count === 'number' ? count : (4 + Math.floor(Math.random() * 2));
+        } else {
+            n = typeof count === 'number' ? count : (4 + Math.floor(Math.random() * 2));
+        }
+        const arr = Array.from({ length: n }, () => randomInt(1, 100));
         set({ 
             data: arr,
             nodes: arr.map(v => ({ id: nextId++, value: v })),
             treeActions: arr.map(v => ({ op: 'insert', val: v })),
             frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null
-        })
-        get().addLog(`Randomized with ${n} items: [${arr.join(', ')}]`)
+        });
+        get().addLog(`Randomized with ${n} items: [${arr.join(', ')}]`);
     },
 
     addItem: (value) => {
@@ -198,7 +217,7 @@ export const useStore = create((set, get) => ({
         })
     },
 
-    // --- PUBLIC ACTIONS (Wrapped for Frames) ---
+    // --- PUBLIC ACTIONS ---
     addAtIndex: (index, value) => get()._runWithFrames(get()._addAtIndex, 'addAtIndex', [index, value]),
     deleteByValue: (value) => get()._runWithFrames(get()._deleteByValue, 'deleteByValue', [value]),
     deleteAtIndex: (index) => get()._runWithFrames(get()._deleteAtIndex, 'deleteAtIndex', [index]),
@@ -428,12 +447,12 @@ export const useStore = create((set, get) => ({
     },
 
     _getTreePath: (value) => {
-        const { selectedStructure, treeActions } = get();
+        const { selectedStructure, treeActions, bTreeDegree } = get();
         let tree;
         if (selectedStructure === 'Trees - AVL') tree = new AVLTree();
         else if (selectedStructure === 'Trees - Red-Black') tree = new RedBlackTree();
         else if (selectedStructure === 'Trees - Splay') tree = new SplayTree();
-        else if (selectedStructure === 'Trees - B-Tree') tree = new BTree(2);
+        else if (selectedStructure === 'Trees - B-Tree') tree = new BTree(bTreeDegree);
         else tree = new BST();
 
         treeActions.forEach(a => {

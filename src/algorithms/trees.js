@@ -411,6 +411,136 @@ export class RedBlackTree extends BST {
         }
         this.root.color = BLACK;
     }
+
+    _minimum(node) {
+        while (node.left !== this.TNULL) {
+            node = node.left;
+        }
+        return node;
+    }
+
+    _rbTransplant(u, v) {
+        if (u.parent === null) {
+            this.root = v;
+        } else if (u === u.parent.left) {
+            u.parent.left = v;
+        } else {
+            u.parent.right = v;
+        }
+        v.parent = u.parent;
+    }
+
+    delete(value) {
+        let z = this.TNULL;
+        let node = this.root;
+        
+        // Find the node
+        while (node !== this.TNULL) {
+            if (node.value === value) {
+                z = node;
+                break;
+            }
+            if (node.value < value) {
+                node = node.right;
+            } else {
+                node = node.left;
+            }
+        }
+
+        if (z === this.TNULL) return; // Value not found
+
+        let y = z;
+        let yOriginalColor = y.color;
+        let x;
+
+        if (z.left === this.TNULL) {
+            x = z.right;
+            this._rbTransplant(z, z.right);
+        } else if (z.right === this.TNULL) {
+            x = z.left;
+            this._rbTransplant(z, z.left);
+        } else {
+            y = this._minimum(z.right);
+            yOriginalColor = y.color;
+            x = y.right;
+            if (y.parent === z) {
+                x.parent = y;
+            } else {
+                this._rbTransplant(y, y.right);
+                y.right = z.right;
+                y.right.parent = y;
+            }
+            this._rbTransplant(z, y);
+            y.left = z.left;
+            y.left.parent = y;
+            y.color = z.color;
+        }
+
+        // Only need to fix properties if the originally removed/moved node was black
+        if (yOriginalColor === BLACK) {
+            this._fixDelete(x);
+        }
+    }
+
+    _fixDelete(x) {
+        let s;
+        while (x !== this.root && x.color === BLACK) {
+            if (x === x.parent.left) {
+                s = x.parent.right;
+                if (s.color === RED) {
+                    s.color = BLACK;
+                    x.parent.color = RED;
+                    this._leftRotate(x.parent);
+                    s = x.parent.right;
+                }
+
+                if (s.left.color === BLACK && s.right.color === BLACK) {
+                    s.color = RED;
+                    x = x.parent;
+                } else {
+                    if (s.right.color === BLACK) {
+                        s.left.color = BLACK;
+                        s.color = RED;
+                        this._rightRotate(s);
+                        s = x.parent.right;
+                    }
+
+                    s.color = x.parent.color;
+                    x.parent.color = BLACK;
+                    s.right.color = BLACK;
+                    this._leftRotate(x.parent);
+                    x = this.root;
+                }
+            } else {
+                s = x.parent.left;
+                if (s.color === RED) {
+                    s.color = BLACK;
+                    x.parent.color = RED;
+                    this._rightRotate(x.parent);
+                    s = x.parent.left;
+                }
+
+                if (s.right.color === BLACK && s.left.color === BLACK) {
+                    s.color = RED;
+                    x = x.parent;
+                } else {
+                    if (s.left.color === BLACK) {
+                        s.right.color = BLACK;
+                        s.color = RED;
+                        this._leftRotate(s);
+                        s = x.parent.left;
+                    }
+
+                    s.color = x.parent.color;
+                    x.parent.color = BLACK;
+                    s.left.color = BLACK;
+                    this._rightRotate(x.parent);
+                    x = this.root;
+                }
+            }
+        }
+        x.color = BLACK;
+    }
 }
 
 // ==========================================
@@ -486,18 +616,33 @@ export class BTree {
     }
 
     _splitChild(node, i, y) {
-        let z = new BTreeNode(y.t, y.isLeaf);
-        for (let j = 0; j < this.t - 1; j++) z.keys[j] = y.keys[j + this.t];
-        if (!y.isLeaf) {
-            for (let j = 0; j < this.t; j++) z.children[j] = y.children[j + this.t];
-        }
-        y.keys.length = this.t - 1;
-        y.children.length = y.isLeaf ? 0 : this.t;
+        const t = this.t;
+        const midKey = y.keys[t - 1];
+        let z = new BTreeNode(t, y.isLeaf);
 
-        for (let j = node.keys.length; j >= i + 1; j--) node.children[j + 1] = node.children[j];
+        for (let j = 0; j < t - 1; j++) {
+            z.keys[j] = y.keys[j + t];
+        }
+        if (!y.isLeaf) {
+            for (let j = 0; j < t; j++) {
+                z.children[j] = y.children[j + t];
+            }
+        }
+        y.keys.length = t - 1;
+        if (!y.isLeaf) {
+            y.children.length = t;
+        }
+        
+        for (let j = node.children.length; j > i + 1; j--) {
+            node.children[j] = node.children[j - 1];
+        }
+
         node.children[i + 1] = z;
 
-        for (let j = node.keys.length - 1; j >= i; j--) node.keys[j + 1] = node.keys[j];
-        node.keys[i] = y.keys[this.t - 1];
+        for (let j = node.keys.length; j > i; j--) {
+            node.keys[j] = node.keys[j - 1];
+        }
+
+        node.keys[i] = midKey;
     }
 }
