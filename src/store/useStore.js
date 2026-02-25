@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { BST, AVLTree, SplayTree, RedBlackTree, BTree } from '../algorithms/trees'
+import { Heap } from '../algorithms/heaps'
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -12,6 +13,15 @@ export const useStore = create((set, get) => ({
     logs: [],
     data: [], 
     nodes: [], 
+
+    heapMode: 'Min', 
+    highlightIndices: [],
+    highlightType: '', // 'compare', 'swap', 'insert', 'pop'
+
+    setHeapMode: (mode) => {
+        set({ heapMode: mode, data: [], highlightIndices: [] });
+        get().addLog(`Switched Heap mode to ${mode}-Heap. Array cleared.`);
+    },
 
     playing: false,
     speedMs: 600,
@@ -341,10 +351,9 @@ export const useStore = create((set, get) => ({
         set({ playing: false, currentStep: 0, highlightIndex: -1 })
     },
 
-    treeActions: [], // Crucial for Splay Tree: retains sequence of operations (Insert/Search)
+    treeActions: [],
     highlightNodeValue: null,
 
-    // Add this helper internally
     _getTreePath: (value) => {
         const { selectedStructure, treeActions } = get();
         let tree;
@@ -354,14 +363,12 @@ export const useStore = create((set, get) => ({
         else if (selectedStructure === 'Trees - B-Tree') tree = new BTree(2);
         else tree = new BST();
 
-        // Replay history to get current tree state
         treeActions.forEach(a => {
             if (a.op === 'insert') tree.insert(a.val);
             else if (a.op === 'delete' && tree.delete) tree.delete(a.val);
             else if (a.op === 'find' && tree.searchPath) tree.searchPath(a.val);
         });
 
-        // Simulates the path traversal before action applies
         return tree.searchPath ? tree.searchPath(value) : []; 
     },
 
@@ -381,11 +388,11 @@ export const useStore = create((set, get) => ({
 
         get().addLog(`Phase 2: Inserting node and restructuring (if applicable)...`);
         
-        // Phase 2: Restructure (Splay kicks in here via treeActions replay in UI)
+        // Phase 2: Restructure 
         set((state) => ({ 
             treeActions: [...state.treeActions, { op: 'insert', val: value }],
             data: [...state.data, value], 
-            highlightNodeValue: value // Highlight the final resulting node
+            highlightNodeValue: value
         }));
         
         await sleep(speed * 1.5);
@@ -411,7 +418,7 @@ export const useStore = create((set, get) => ({
         if (isFound) get().addLog(`Phase 2: Found ${value}! Restructuring...`);
         else get().addLog(`Phase 2: ${value} not found. Restructuring from last accessed...`);
 
-        // Phase 2: Record find operation (Crucial for Splay Tree to move node/parent to root)
+        // Phase 2: Record find operation
         set((state) => ({ 
             treeActions: [...state.treeActions, { op: 'find', val: value }],
             highlightNodeValue: isFound ? `FOUND-${value}` : null 
@@ -452,6 +459,117 @@ export const useStore = create((set, get) => ({
         
         await sleep(speed);
         set({ isAnimating: false });
+    },
+
+    heapBuild: async () => {
+        if (get().isAnimating) return;
+        set({ isAnimating: true, highlightIndices: [] });
+        const speed = get().speedMs;
+        
+        // Create a random array to heapify
+        const n = 10 + Math.floor(Math.random() * 6);
+        const arr = Array.from({ length: n }, () => randomInt(1, 99));
+        
+        get().addLog(`Building ${get().heapMode}-Heap with [${arr.join(', ')}]`);
+        set({ data: [...arr] });
+        await sleep(speed);
+
+        const tracker = new Heap(get().heapMode);
+        const workArr = [...arr];
+        const steps = tracker.buildHeap(workArr);
+
+        for (let step of steps) {
+            if (step.op === 'compare') {
+                set({ highlightIndices: [step.i, step.j], highlightType: 'compare' });
+                await sleep(speed);
+            } else if (step.op === 'swap') {
+                set({ highlightIndices: [step.i, step.j], highlightType: 'swap' });
+                await sleep(speed);
+                // Execute swap in state
+                set(state => {
+                    const nd = [...state.data];
+                    [nd[step.i], nd[step.j]] = [nd[step.j], nd[step.i]];
+                    return { data: nd };
+                });
+                await sleep(speed);
+            }
+        }
+        
+        set({ highlightIndices: [], isAnimating: false });
+        get().addLog(`Heap build complete.`);
+    },
+
+    heapInsert: async (value) => {
+        if (get().isAnimating) return;
+        set({ isAnimating: true, highlightIndices: [] });
+        const speed = get().speedMs;
+        const tracker = new Heap(get().heapMode);
+        
+        get().addLog(`Inserting ${value} into ${get().heapMode}-Heap...`);
+        
+        const workArr = [...get().data];
+        const steps = tracker.insert(workArr, value);
+        
+        for (let step of steps) {
+            if (step.op === 'insert') {
+                set(state => ({ data: [...state.data, step.val], highlightIndices: [step.i], highlightType: 'insert' }));
+                await sleep(speed);
+            } else if (step.op === 'compare') {
+                set({ highlightIndices: [step.i, step.j], highlightType: 'compare' });
+                await sleep(speed);
+            } else if (step.op === 'swap') {
+                set({ highlightIndices: [step.i, step.j], highlightType: 'swap' });
+                await sleep(speed);
+                set(state => {
+                    const nd = [...state.data];
+                    [nd[step.i], nd[step.j]] = [nd[step.j], nd[step.i]];
+                    return { data: nd };
+                });
+                await sleep(speed);
+            }
+        }
+        
+        set({ highlightIndices: [], highlightType: '', isAnimating: false });
+        get().addLog(`Inserted ${value}.`);
+    },
+
+    heapPop: async () => {
+        if (get().isAnimating || get().data.length === 0) return;
+        set({ isAnimating: true, highlightIndices: [] });
+        const speed = get().speedMs;
+        const tracker = new Heap(get().heapMode);
+        
+        get().addLog(`Popping root from ${get().heapMode}-Heap...`);
+        
+        const workArr = [...get().data];
+        const steps = tracker.pop(workArr);
+        
+        for (let step of steps) {
+            if (step.op === 'compare') {
+                set({ highlightIndices: [step.i, step.j], highlightType: 'compare' });
+                await sleep(speed);
+            } else if (step.op === 'swap') {
+                set({ highlightIndices: [step.i, step.j], highlightType: 'swap' });
+                await sleep(speed);
+                set(state => {
+                    const nd = [...state.data];
+                    [nd[step.i], nd[step.j]] = [nd[step.j], nd[step.i]];
+                    return { data: nd };
+                });
+                await sleep(speed);
+            } else if (step.op === 'pop') {
+                set({ highlightIndices: [step.i], highlightType: 'pop' });
+                await sleep(speed);
+                set(state => {
+                    const nd = [...state.data];
+                    nd.pop(); 
+                    return { data: nd };
+                });
+            }
+        }
+        
+        set({ highlightIndices: [], highlightType: '', isAnimating: false });
+        get().addLog(`Pop complete.`);
     },
 }))
 

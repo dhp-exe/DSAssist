@@ -5,21 +5,10 @@ export default function ControlPanel() {
   const [value, setValue] = useState('')
   const [index, setIndex] = useState('')
   const { 
-    randomize, 
-    addAtIndex, 
-    deleteAtIndex, 
-    deleteByValue,
-    updateAtIndex,
-    addItem,
-    deleteItem,
-    treeInsert,
-    treeDelete,
-    treeFind,
-    selectedStructure, 
-    implementationMode, 
-    setImplementationMode,
-    data, 
-    isAnimating 
+    randomize, addAtIndex, deleteAtIndex, deleteByValue, updateAtIndex, addItem, deleteItem, 
+    treeInsert, treeDelete, treeFind,
+    heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
+    selectedStructure, implementationMode, setImplementationMode, data, isAnimating 
   } = useStore()
 
   const isList = selectedStructure.includes('Linked List')
@@ -27,6 +16,7 @@ export default function ControlPanel() {
   const isStack = selectedStructure === 'Stack'
   const isQueue = selectedStructure === 'Queue'
   const isTree = selectedStructure.startsWith('Trees')
+  const isHeap = selectedStructure === 'Heaps'
 
   const handleTreeInsert = () => {
       const v = Number(value)
@@ -78,6 +68,20 @@ export default function ControlPanel() {
                                 disabled={isAnimating}
                             />
                             Linked List
+                        </label>
+                    </div>
+                </div>
+            )}
+
+            {isHeap && (
+                <div className="flex flex-col gap-1 mb-2">
+                    <div className="text-xs font-semibold text-slate-500 uppercase">Heap Mode</div>
+                    <div className="flex gap-4 bg-slate-100 p-2 rounded border">
+                        <label className="text-sm flex items-center gap-1 cursor-pointer">
+                            <input type="radio" value="Min" checked={heapMode === 'Min'} onChange={() => setHeapMode('Min')} disabled={isAnimating} /> Min-Heap
+                        </label>
+                        <label className="text-sm flex items-center gap-1 cursor-pointer">
+                            <input type="radio" value="Max" checked={heapMode === 'Max'} onChange={() => setHeapMode('Max')} disabled={isAnimating} /> Max-Heap
                         </label>
                     </div>
                 </div>
@@ -170,16 +174,28 @@ export default function ControlPanel() {
                     </div>
                 </>
             )}
+
+            {isHeap && (
+                <>
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Heap Operations</div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button disabled={isAnimating || !value} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { heapInsert(Number(value)); setValue(''); }}>Insert</button>
+                        <button disabled={isAnimating || data.length === 0} className="py-1 bg-rose-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { heapPop(); }}>Pop</button>
+                    </div>
+                </>
+            )}
         </div>
 
         <div className="mb-2">
-            <button
-                disabled={isAnimating}
-                className="w-full py-1 bg-slate-800 text-white rounded disabled:opacity-50"
-                onClick={() => randomize()}
-            >
-                Randomize
-            </button>
+            {isHeap ? (
+                <button disabled={isAnimating} className="w-full py-1 bg-indigo-600 text-white rounded disabled:opacity-50 font-semibold" onClick={() => heapBuild()}>
+                    Build Heap
+                </button>
+            ) : (
+                <button disabled={isAnimating} className="w-full py-1 bg-slate-800 text-white rounded disabled:opacity-50" onClick={() => randomize()}>
+                    Randomize
+                </button>
+            )}
         </div>
     </div>
   )
