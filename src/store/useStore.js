@@ -3,90 +3,170 @@ import { BST, AVLTree, SplayTree, RedBlackTree, BTree } from '../algorithms/tree
 import { Heap } from '../algorithms/heaps'
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+// Instant Frame Generator Hook
+let frames = [];
+const sleep = async (ms) => {
+    const state = useStore.getState();
+    if (state.isGeneratingFrames) {
+        state._recordFrame();
+        return Promise.resolve(); // Skip actual wait, just capture the frame instantly
+    }
+    return new Promise((resolve) => setTimeout(resolve, ms));
+};
 
 let nextId = 0;
 
 export const useStore = create((set, get) => ({
     selectedStructure: 'Singly Linked List',
-    implementationMode: 'Array', // 'Array' or 'Linked List'
+    implementationMode: 'Array', 
+    heapMode: 'Min', 
     logs: [],
     data: [], 
     nodes: [], 
-
-    heapMode: 'Min', 
+    treeActions: [],
+    
+    // Highlights
+    highlightIndex: -1,
+    highlightNodeValue: null,
     highlightIndices: [],
-    highlightType: '', // 'compare', 'swap', 'insert', 'pop'
+    highlightType: '',
 
-    setHeapMode: (mode) => {
-        set({ heapMode: mode, data: [], highlightIndices: [] });
-        get().addLog(`Switched Heap mode to ${mode}-Heap. Array cleared.`);
-    },
-
+    // Playback & Animation Engine
+    frames: [],
+    currentFrame: 0,
     playing: false,
     speedMs: 600,
-    currentStep: 0,
-    highlightIndex: -1,
     isAnimating: false, 
+    isGeneratingFrames: false,
+    latestOperation: null,
 
-    setImplementationMode: (mode) => {
-        set({ implementationMode: mode, highlightIndex: -1 });
-        get().addLog(`Switched implementation to ${mode}`);
+    // --- FRAME GENERATION ENGINE ---
+    _recordFrame: () => {
+        const state = get();
+        frames.push({
+            data: JSON.parse(JSON.stringify(state.data)),
+            nodes: JSON.parse(JSON.stringify(state.nodes)),
+            treeActions: JSON.parse(JSON.stringify(state.treeActions)),
+            logs: [...state.logs],
+            highlightIndex: state.highlightIndex,
+            highlightNodeValue: state.highlightNodeValue,
+            highlightIndices: [...state.highlightIndices],
+            highlightType: state.highlightType
+        });
     },
 
+    _applyFrame: (frame) => {
+        if (!frame) return;
+        set({
+            data: frame.data,
+            nodes: frame.nodes,
+            treeActions: frame.treeActions,
+            logs: frame.logs,
+            highlightIndex: frame.highlightIndex,
+            highlightNodeValue: frame.highlightNodeValue,
+            highlightIndices: frame.highlightIndices,
+            highlightType: frame.highlightType
+        });
+    },
+
+    _runWithFrames: async (operationFn, opName, args) => {
+        if (get().isAnimating && !get().isGeneratingFrames) return;
+        set({ playing: false, isGeneratingFrames: true });
+        
+        // Save initial state before operation to allow exact replays
+        const initialState = {
+            data: JSON.parse(JSON.stringify(get().data)),
+            nodes: JSON.parse(JSON.stringify(get().nodes)),
+            treeActions: JSON.parse(JSON.stringify(get().treeActions)),
+            logs: [...get().logs],
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: ''
+        };
+
+        frames = [];
+        get()._recordFrame(); // Frame 0
+
+        await operationFn(...args);
+
+        get()._recordFrame(); // Final frame
+
+        set({
+            isGeneratingFrames: false,
+            frames: [...frames],
+            currentFrame: 0,
+            playing: true,
+            isAnimating: true,
+            latestOperation: { fn: operationFn, opName, args, initialState }
+        });
+
+        // Apply first frame to start playback cleanly
+        get()._applyFrame(frames[0]);
+    },
+
+    // --- PLAYBACK CONTROLS ---
+    setPlaying: (v) => set({ playing: v, isAnimating: v }),
+    setSpeed: (ms) => set({ speedMs: ms }),
+    stepForward: () => {
+        const { currentFrame, frames } = get();
+        if (frames.length === 0) return;
+        if (currentFrame < frames.length - 1) {
+            const nextFrame = currentFrame + 1;
+            get()._applyFrame(frames[nextFrame]);
+            set({ currentFrame: nextFrame, isAnimating: true });
+            if (nextFrame === frames.length - 1) set({ playing: false, isAnimating: false });
+        } else {
+            set({ playing: false, isAnimating: false });
+        }
+    },
+    stepBack: () => {
+        const { currentFrame, frames } = get();
+        if (frames.length === 0) return;
+        set({ playing: false }); 
+        if (currentFrame > 0) {
+            const prevFrame = currentFrame - 1;
+            get()._applyFrame(frames[prevFrame]);
+            set({ currentFrame: prevFrame, isAnimating: prevFrame < frames.length - 1 });
+        }
+    },
+    replay: () => {
+        const { latestOperation } = get();
+        if (!latestOperation) return;
+        set({ playing: false });
+        get()._applyFrame(latestOperation.initialState);
+        setTimeout(() => { // Small delay to visually reset before playing again
+            get()._runWithFrames(latestOperation.fn, latestOperation.opName, latestOperation.args);
+        }, 50);
+    },
+    clearData: () => {
+        set({
+            data: [], nodes: [], treeActions: [], logs: [],
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null
+        });
+        get().addLog('Data cleared.');
+    },
+
+    // --- UI CONFIGURATIONS ---
+    setHeapMode: (mode) => {
+        set({ heapMode: mode, data: [], highlightIndices: [], frames: [], playing: false, isAnimating: false });
+        get().addLog(`Switched Heap mode to ${mode}-Heap. Array cleared.`);
+    },
+    setImplementationMode: (mode) => {
+        set({ implementationMode: mode, highlightIndex: -1, frames: [], playing: false, isAnimating: false });
+        get().addLog(`Switched implementation to ${mode}`);
+    },
     setStructure: (s) => {
         set({ 
-            selectedStructure: s, 
-            implementationMode: 'Array', // Reset to Array default
-            data: [], 
-            nodes: [], 
-            treeActions: [],
-            highlightIndex: -1,
-            highlightNodeValue: null 
+            selectedStructure: s, implementationMode: 'Array', data: [], nodes: [], treeActions: [],
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null 
         });
         get().addLog(`Switched to ${s}`);
     },
-
     addLog: (msg) => {
         set((state) => ({ logs: [...state.logs, `${new Date().toLocaleTimeString()} - ${msg}`] }))
     },
-
     clearLogs: () => set({ logs: [] }),
-
-    setData: (arr) => set({ 
-        data: arr, 
-        nodes: arr.map(v => ({ id: nextId++, value: v })),
-        treeActions: arr.map(v => ({ op: 'insert', val: v })) 
-    }),
-
-    addItem: (value) => {
-        set((state) => ({ 
-            data: [...state.data, value],
-            nodes: [...state.nodes, { id: nextId++, value }],
-            treeActions: [...state.treeActions, { op: 'insert', val: value }]
-        }))
-        get().addLog(`Added ${value}`)
-    },
-
-    deleteItem: (value) => {
-        set((state) => {
-            const index = state.data.indexOf(value)
-            if (index === -1) {
-                get().addLog(`Error: ${value} not found`)
-                return state
-            }
-            const newData = [...state.data]
-            const newNodes = [...state.nodes]
-            newData.splice(index, 1)
-            newNodes.splice(index, 1)
-            get().addLog(`Deleted ${value}`)
-            return { 
-                data: newData, 
-                nodes: newNodes, 
-                treeActions: [...state.treeActions, { op: 'delete', val: value }] 
-            }
-        })
-    },
 
     randomize: (count) => {
         const n = typeof count === 'number' ? count : (4 + Math.floor(Math.random() * 2))
@@ -94,15 +174,44 @@ export const useStore = create((set, get) => ({
         set({ 
             data: arr,
             nodes: arr.map(v => ({ id: nextId++, value: v })),
-            treeActions: arr.map(v => ({ op: 'insert', val: v })) 
+            treeActions: arr.map(v => ({ op: 'insert', val: v })),
+            frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null
         })
         get().addLog(`Randomized with ${n} items: [${arr.join(', ')}]`)
     },
 
-    addAtIndex: async (index, value) => {
-        if (get().isAnimating) return;
-        set({ isAnimating: true });
+    addItem: (value) => {
+        set((state) => ({ 
+            data: [...state.data, value], nodes: [...state.nodes, { id: nextId++, value }],
+            treeActions: [...state.treeActions, { op: 'insert', val: value }]
+        }))
+        get().addLog(`Added ${value}`)
+    },
+    deleteItem: (value) => {
+        set((state) => {
+            const index = state.data.indexOf(value)
+            if (index === -1) { get().addLog(`Error: ${value} not found`); return state; }
+            const newData = [...state.data]; const newNodes = [...state.nodes];
+            newData.splice(index, 1); newNodes.splice(index, 1);
+            get().addLog(`Deleted ${value}`);
+            return { data: newData, nodes: newNodes, treeActions: [...state.treeActions, { op: 'delete', val: value }] }
+        })
+    },
 
+    // --- PUBLIC ACTIONS (Wrapped for Frames) ---
+    addAtIndex: (index, value) => get()._runWithFrames(get()._addAtIndex, 'addAtIndex', [index, value]),
+    deleteByValue: (value) => get()._runWithFrames(get()._deleteByValue, 'deleteByValue', [value]),
+    deleteAtIndex: (index) => get()._runWithFrames(get()._deleteAtIndex, 'deleteAtIndex', [index]),
+    updateAtIndex: (index, value) => get()._runWithFrames(get()._updateAtIndex, 'updateAtIndex', [index, value]),
+    treeInsert: (value) => get()._runWithFrames(get()._treeInsert, 'treeInsert', [value]),
+    treeFind: (value) => get()._runWithFrames(get()._treeFind, 'treeFind', [value]),
+    treeDelete: (value) => get()._runWithFrames(get()._treeDelete, 'treeDelete', [value]),
+    heapBuild: () => get()._runWithFrames(get()._heapBuild, 'heapBuild', []),
+    heapInsert: (value) => get()._runWithFrames(get()._heapInsert, 'heapInsert', [value]),
+    heapPop: () => get()._runWithFrames(get()._heapPop, 'heapPop', []),
+
+    // --- INTERNAL ACTION LOGIC ---
+    _addAtIndex: async (index, value) => {
         const { selectedStructure, implementationMode, speedMs, data, nodes } = get();
         const isStack = selectedStructure === 'Stack';
         const isQueue = selectedStructure === 'Queue';
@@ -151,7 +260,7 @@ export const useStore = create((set, get) => ({
                 await sleep(1500); 
             }
 
-            get().addLog(`Step 3: Merging node and updating Head/Tail pointers`);
+            get().addLog(`Step 3: Merging node and updating pointers`);
         } else if (isArray) {
             if (target < data.length) {
                 get().addLog(`Shifting elements right to make space for ${value}...`);
@@ -189,16 +298,13 @@ export const useStore = create((set, get) => ({
 
         set((state) => {
             const newNodes = state.nodes.map(n => n.id === stagedId ? { id: n.id, value: n.value } : n);
-            return { nodes: newNodes, highlightIndex: -1, isAnimating: false };
+            return { nodes: newNodes, highlightIndex: -1 };
         });
     },
 
-    deleteByValue: async (value) => {
-        if (get().isAnimating) return;
-        const { data, speedMs, deleteAtIndex } = get();
-        
+    _deleteByValue: async (value) => {
+        const { data, speedMs, _deleteAtIndex } = get();
         if (data.length === 0) return;
-        set({ isAnimating: true });
 
         get().addLog(`Searching for value ${value} to delete...`);
         let targetIndex = -1;
@@ -215,22 +321,17 @@ export const useStore = create((set, get) => ({
 
         if (targetIndex === -1) {
             get().addLog(`Value ${value} not found.`);
-            set({ highlightIndex: -1, isAnimating: false });
+            set({ highlightIndex: -1 });
             return;
         }
 
-        set({ isAnimating: false });
-        await deleteAtIndex(targetIndex);
+        await _deleteAtIndex(targetIndex);
     },
 
-    deleteAtIndex: async (index) => {
-        if (get().isAnimating) return;
+    _deleteAtIndex: async (index) => {
         const { data, selectedStructure, implementationMode, speedMs } = get();
-        
         if (index < 0 || index >= data.length) return;
 
-        set({ isAnimating: true });
-        
         const isDoubly = selectedStructure === 'Doubly Linked List';
         const isStack = selectedStructure === 'Stack';
         const isQueue = selectedStructure === 'Queue';
@@ -302,15 +403,13 @@ export const useStore = create((set, get) => ({
         }
 
         await sleep(500);
-        set({ highlightIndex: -1, isAnimating: false });
+        set({ highlightIndex: -1 });
     },
 
-    updateAtIndex: async (index, value) => {
-        if (get().isAnimating) return;
+    _updateAtIndex: async (index, value) => {
         const { data, speedMs } = get();
         if (index < 0 || index >= data.length) return;
 
-        set({ isAnimating: true });
         get().addLog(`Updating index ${index} to ${value}...`);
         
         set({ highlightIndex: index });
@@ -325,34 +424,8 @@ export const useStore = create((set, get) => ({
         });
 
         await sleep(speedMs);
-        set({ highlightIndex: -1, isAnimating: false });
+        set({ highlightIndex: -1 });
     },
-
-    // --- PLAYBACK CONTROLS ---
-    setPlaying: (v) => set({ playing: v }),
-    setSpeed: (ms) => set({ speedMs: ms }),
-    setCurrentStep: (i) => set({ currentStep: i }),
-    setHighlight: (i) => set({ highlightIndex: i }),
-    stepForward: () => {
-        const s = get()
-        const next = s.currentStep + 1
-        if (next >= s.data.length) {
-            set({ playing: false, currentStep: s.data.length - 1, highlightIndex: s.data.length - 1 })
-            return
-        }
-        set({ currentStep: next, highlightIndex: next })
-    },
-    stepBack: () => {
-        const s = get()
-        const prev = Math.max(0, s.currentStep - 1)
-        set({ currentStep: prev, highlightIndex: prev })
-    },
-    resetPlayback: () => {
-        set({ playing: false, currentStep: 0, highlightIndex: -1 })
-    },
-
-    treeActions: [],
-    highlightNodeValue: null,
 
     _getTreePath: (value) => {
         const { selectedStructure, treeActions } = get();
@@ -372,15 +445,12 @@ export const useStore = create((set, get) => ({
         return tree.searchPath ? tree.searchPath(value) : []; 
     },
 
-    treeInsert: async (value) => {
-        if (get().isAnimating) return;
-        set({ isAnimating: true });
+    _treeInsert: async (value) => {
         const speed = get().speedMs;
 
         get().addLog(`Phase 1: Traversing from root to find insertion point...`);
         const path = get()._getTreePath(value);
         
-        // Phase 1: Animate traversal
         for (let val of path) {
             set({ highlightNodeValue: val });
             await sleep(speed / 1.5);
@@ -388,7 +458,6 @@ export const useStore = create((set, get) => ({
 
         get().addLog(`Phase 2: Inserting node and restructuring (if applicable)...`);
         
-        // Phase 2: Restructure 
         set((state) => ({ 
             treeActions: [...state.treeActions, { op: 'insert', val: value }],
             data: [...state.data, value], 
@@ -396,18 +465,15 @@ export const useStore = create((set, get) => ({
         }));
         
         await sleep(speed * 1.5);
-        set({ highlightNodeValue: null, isAnimating: false });
+        set({ highlightNodeValue: null });
     },
 
-    treeFind: async (value) => {
-        if (get().isAnimating) return;
-        set({ isAnimating: true });
+    _treeFind: async (value) => {
         const speed = get().speedMs;
 
         get().addLog(`Phase 1: Traversing from root to search for ${value}...`);
         const path = get()._getTreePath(value);
         
-        // Phase 1: Animate traversal
         for (let val of path) {
             set({ highlightNodeValue: val });
             await sleep(speed / 1.5);
@@ -418,25 +484,21 @@ export const useStore = create((set, get) => ({
         if (isFound) get().addLog(`Phase 2: Found ${value}! Restructuring...`);
         else get().addLog(`Phase 2: ${value} not found. Restructuring from last accessed...`);
 
-        // Phase 2: Record find operation
         set((state) => ({ 
             treeActions: [...state.treeActions, { op: 'find', val: value }],
             highlightNodeValue: isFound ? `FOUND-${value}` : null 
         }));
         
         await sleep(speed * 2);
-        set({ highlightNodeValue: null, isAnimating: false });
+        set({ highlightNodeValue: null });
     },
 
-    treeDelete: async (value) => {
-        if (get().isAnimating) return;
-        set({ isAnimating: true });
+    _treeDelete: async (value) => {
         const speed = get().speedMs;
 
         get().addLog(`Phase 1: Traversing from root to locate ${value} for deletion...`);
         const path = get()._getTreePath(value);
         
-        // Phase 1: Animate traversal
         for (let val of path) {
             set({ highlightNodeValue: val });
             await sleep(speed / 1.5);
@@ -444,13 +506,12 @@ export const useStore = create((set, get) => ({
 
         if (path.length === 0 || !String(path[path.length - 1]).includes(String(value))) {
             get().addLog(`Cannot delete: ${value} not found.`);
-            set({ highlightNodeValue: null, isAnimating: false });
+            set({ highlightNodeValue: null });
             return;
         }
 
         get().addLog(`Phase 2: Removing node and merging subtrees/rebalancing...`);
 
-        // Phase 2: Restructure
         set((state) => ({ 
             treeActions: [...state.treeActions, { op: 'delete', val: value }],
             data: state.data.filter(v => v !== value),
@@ -458,15 +519,12 @@ export const useStore = create((set, get) => ({
         }));
         
         await sleep(speed);
-        set({ isAnimating: false });
     },
 
-    heapBuild: async () => {
-        if (get().isAnimating) return;
-        set({ isAnimating: true, highlightIndices: [] });
+    _heapBuild: async () => {
+        set({ highlightIndices: [] });
         const speed = get().speedMs;
         
-        // Create a random array to heapify
         const n = 10 + Math.floor(Math.random() * 6);
         const arr = Array.from({ length: n }, () => randomInt(1, 99));
         
@@ -485,7 +543,6 @@ export const useStore = create((set, get) => ({
             } else if (step.op === 'swap') {
                 set({ highlightIndices: [step.i, step.j], highlightType: 'swap' });
                 await sleep(speed);
-                // Execute swap in state
                 set(state => {
                     const nd = [...state.data];
                     [nd[step.i], nd[step.j]] = [nd[step.j], nd[step.i]];
@@ -495,13 +552,12 @@ export const useStore = create((set, get) => ({
             }
         }
         
-        set({ highlightIndices: [], isAnimating: false });
+        set({ highlightIndices: [] });
         get().addLog(`Heap build complete.`);
     },
 
-    heapInsert: async (value) => {
-        if (get().isAnimating) return;
-        set({ isAnimating: true, highlightIndices: [] });
+    _heapInsert: async (value) => {
+        set({ highlightIndices: [] });
         const speed = get().speedMs;
         const tracker = new Heap(get().heapMode);
         
@@ -529,13 +585,13 @@ export const useStore = create((set, get) => ({
             }
         }
         
-        set({ highlightIndices: [], highlightType: '', isAnimating: false });
+        set({ highlightIndices: [], highlightType: '' });
         get().addLog(`Inserted ${value}.`);
     },
 
-    heapPop: async () => {
-        if (get().isAnimating || get().data.length === 0) return;
-        set({ isAnimating: true, highlightIndices: [] });
+    _heapPop: async () => {
+        if (get().data.length === 0) return;
+        set({ highlightIndices: [] });
         const speed = get().speedMs;
         const tracker = new Heap(get().heapMode);
         
@@ -568,7 +624,7 @@ export const useStore = create((set, get) => ({
             }
         }
         
-        set({ highlightIndices: [], highlightType: '', isAnimating: false });
+        set({ highlightIndices: [], highlightType: '' });
         get().addLog(`Pop complete.`);
     },
 }))

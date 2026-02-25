@@ -15,6 +15,7 @@ const OPTIONS = [
   'Heaps',
   'Hash',
   'Graphs',
+  'Algorithm - Binary Search',
   'Algorithms - DFS',
   'Algorithms - BFS',
   'Algorithms - Sorting',
