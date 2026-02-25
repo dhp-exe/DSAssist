@@ -2,7 +2,6 @@ import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 
-// Updated Arrow to accept dynamic colors
 const Arrow = ({ horizontal = true, color = "#93C5FD" }) => {
     if (horizontal) {
         return (
@@ -13,39 +12,58 @@ const Arrow = ({ horizontal = true, color = "#93C5FD" }) => {
         )
     }
     return (
-        <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2v26" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M6 28l6 6 6-6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="24" height="16" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 0v14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M6 8l6 6 6-6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
     )
 }
 
-const VerticalPointer = ({ label, color }) => (
-    <motion.div 
-        initial={{ opacity: 0, y: 15 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        exit={{ opacity: 0, y: 15 }}
-        className={`absolute -bottom-14 flex flex-col items-center font-bold text-sm ${color}`}
-    >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mb-0.5">
-            <path d="M12 19V5M5 12l7-7 7 7" />
-        </svg>
-        <span>{label}</span>
-    </motion.div>
-)
+const Pointer = ({ label, color, orientation = 'vertical' }) => {
+    if (orientation === 'horizontal') {
+        return (
+            <motion.div 
+                initial={{ opacity: 0, x: -15 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                exit={{ opacity: 0, x: -15 }}
+                className={`absolute -left-24 top-1/2 -translate-y-1/2 flex items-center justify-end w-20 font-bold text-sm ${color} whitespace-nowrap`}
+            >
+                <span>{label}</span>
+                <svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="ml-2 shrink-0">
+                    <path d="M4 16H28M20 8l8 8-8 8" />
+                </svg>
+            </motion.div>
+        )
+    }
+    
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 15 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: 15 }}
+            className={`absolute -bottom-14 flex flex-col items-center font-bold text-sm ${color} whitespace-nowrap`}
+        >
+            <svg width="18" height="24" viewBox="0 0 24 32" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mb-0.5">
+                <path d="M12 30V4M5 12l7-7 7 7" />
+            </svg>
+            <span>{label}</span>
+        </motion.div>
+    )
+}
 
 export default function LinearVisualizer({ type }) {
     const nodes = useStore((s) => s.nodes)
     const highlight = useStore((s) => s.highlightIndex)
+    const impl = useStore((s) => s.implementationMode)
 
     if (!nodes || nodes.length === 0) {
         return <div className="h-full flex items-center justify-center text-slate-400">Empty - add elements.</div>
     }
 
-    const isStack = type === 'Stack'
-    const isQueue = type === 'Queue'
+    const isStack = type === 'Stack' && impl === 'Array'
+    const isQueue = type === 'Queue' && impl === 'Array'
     const isDoubly = type === 'Doubly Linked List'
-    const isSingly = type === 'Singly Linked List'
+    const isSingly = type === 'Singly Linked List' || ((type === 'Stack' || type === 'Queue') && impl === 'Linked List')
     const isArray = type === 'ArrayList'
 
     if (isArray) {
@@ -143,10 +161,29 @@ export default function LinearVisualizer({ type }) {
         return '#93C5FD'; 
     };
 
+    let headLabel = 'Head';
+    let tailLabel = 'Tail';
+    let showTailPointer = true;
+    let isVertical = false;
+    
+    // Dynamic container styles
+    let containerClasses = "flex items-center gap-4 mt-8"; 
+
+    if (type === 'Queue') {
+        headLabel = 'Front';
+        tailLabel = 'Back';
+        containerClasses = "border-t-4 border-b-4 border-slate-400 flex items-center bg-slate-50 shadow-inner p-4 min-w-[250px] min-h-[120px] gap-2";
+    } else if (type === 'Stack') {
+        headLabel = 'Top';
+        showTailPointer = false; 
+        isVertical = true;
+        containerClasses = "border-b-4 border-l-4 border-r-4 border-slate-400 rounded-b-xl flex flex-col justify-end bg-slate-50 shadow-inner p-4 min-w-[150px] min-h-[120px] gap-1 mt-4";
+    }
+
     if (isSingly || isDoubly) {
         return (
             <div className="h-full flex items-center justify-center p-6 overflow-auto">
-                <div className="flex items-center gap-4 mt-8">
+                <div className={containerClasses}>
                     <AnimatePresence mode="popLayout">
                         {nodes.map((node, i) => {
                             let yOffset = 0;
@@ -185,17 +222,17 @@ export default function LinearVisualizer({ type }) {
                                             <div className={`font-bold text-lg ${textColor}`}>{node.value}</div>
                                         </div>
                                         
-                                        {isHead && <VerticalPointer label="Head" color="text-emerald-500" />}
-                                        {isTail && <VerticalPointer label="Tail" color="text-orange-500" />}
+                                        {isHead && <Pointer label={headLabel} color="text-emerald-500" orientation={isVertical ? 'horizontal' : 'vertical'} />}
+                                        {isTail && showTailPointer && <Pointer label={tailLabel} color="text-orange-500" orientation={isVertical ? 'horizontal' : 'vertical'} />}
                                     </motion.div>
 
                                     {i !== nodes.length - 1 && (
                                         <motion.div 
                                             layout
-                                            initial={{ opacity: 0, width: 0 }}
-                                            animate={{ opacity: getArrowOpacity(nodes[i], nodes[i+1]), width: 'auto' }}
+                                            initial={{ opacity: 0, [isVertical ? 'height' : 'width']: 0 }}
+                                            animate={{ opacity: getArrowOpacity(nodes[i], nodes[i+1]), [isVertical ? 'height' : 'width']: 'auto' }}
                                             transition={{ duration: 0.4 }}
-                                            className="flex items-center"
+                                            className={`flex ${isVertical ? 'justify-center' : 'items-center'}`}
                                         >
                                             {isDoubly ? (
                                                 <svg width="36" height="32" viewBox="0 0 36 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -205,7 +242,7 @@ export default function LinearVisualizer({ type }) {
                                                     <path d="M10 16l-6 6 6 6" stroke={getArrowColor(nodes[i], nodes[i+1])} strokeWidth="2" strokeLinecap="round" />
                                                 </svg>
                                             ) : (
-                                                <Arrow horizontal={true} color={getArrowColor(nodes[i], nodes[i+1])} />
+                                                <Arrow horizontal={!isVertical} color={getArrowColor(nodes[i], nodes[i+1])} />
                                             )}
                                         </motion.div>
                                     )}

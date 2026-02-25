@@ -8,19 +8,33 @@ let nextId = 0;
 
 export const useStore = create((set, get) => ({
     selectedStructure: 'Singly Linked List',
+    implementationMode: 'Array', // 'Array' or 'Linked List'
     logs: [],
-    data: [], // Used for trees and graphs compatibility
-    nodes: [], // { id, value } used for smooth linear animations
+    data: [], 
+    nodes: [], 
 
     playing: false,
     speedMs: 600,
     currentStep: 0,
     highlightIndex: -1,
-    isAnimating: false, // Locks the UI while traversing
+    isAnimating: false, 
+
+    setImplementationMode: (mode) => {
+        set({ implementationMode: mode, highlightIndex: -1 });
+        get().addLog(`Switched implementation to ${mode}`);
+    },
 
     setStructure: (s) => {
-        set({ selectedStructure: s, data: [], nodes: [], treeActions: [], highlightIndex: -1 })
-        get().addLog(`Switched to ${s}`)
+        set({ 
+            selectedStructure: s, 
+            implementationMode: 'Array', // Reset to Array default
+            data: [], 
+            nodes: [], 
+            treeActions: [],
+            highlightIndex: -1,
+            highlightNodeValue: null 
+        });
+        get().addLog(`Switched to ${s}`);
     },
 
     addLog: (msg) => {
@@ -32,14 +46,14 @@ export const useStore = create((set, get) => ({
     setData: (arr) => set({ 
         data: arr, 
         nodes: arr.map(v => ({ id: nextId++, value: v })),
-        treeActions: arr.map(v => ({ op: 'insert', val: v })) // Sync tree history
+        treeActions: arr.map(v => ({ op: 'insert', val: v })) 
     }),
 
     addItem: (value) => {
         set((state) => ({ 
             data: [...state.data, value],
             nodes: [...state.nodes, { id: nextId++, value }],
-            treeActions: [...state.treeActions, { op: 'insert', val: value }] // Sync tree history
+            treeActions: [...state.treeActions, { op: 'insert', val: value }]
         }))
         get().addLog(`Added ${value}`)
     },
@@ -59,7 +73,7 @@ export const useStore = create((set, get) => ({
             return { 
                 data: newData, 
                 nodes: newNodes, 
-                treeActions: [...state.treeActions, { op: 'delete', val: value }] // Sync tree history
+                treeActions: [...state.treeActions, { op: 'delete', val: value }] 
             }
         })
     },
@@ -70,27 +84,27 @@ export const useStore = create((set, get) => ({
         set({ 
             data: arr,
             nodes: arr.map(v => ({ id: nextId++, value: v })),
-            treeActions: arr.map(v => ({ op: 'insert', val: v })) // Sync tree history
+            treeActions: arr.map(v => ({ op: 'insert', val: v })) 
         })
         get().addLog(`Randomized with ${n} items: [${arr.join(', ')}]`)
     },
-
-    // --- NEW ANIMATED LINKED LIST OPERATIONS ---
 
     addAtIndex: async (index, value) => {
         if (get().isAnimating) return;
         set({ isAnimating: true });
 
-        const { selectedStructure, speedMs, data, nodes } = get();
-        const isList = selectedStructure.includes('Linked List');
-        const isArray = selectedStructure === 'ArrayList';
+        const { selectedStructure, implementationMode, speedMs, data, nodes } = get();
         const isStack = selectedStructure === 'Stack';
         const isQueue = selectedStructure === 'Queue';
+
+        const isList = selectedStructure.includes('Linked List') || ((isStack || isQueue) && implementationMode === 'Linked List');
+        const isArray = selectedStructure === 'ArrayList';
+        const isStackAnim = isStack && implementationMode === 'Array';
+        const isQueueAnim = isQueue && implementationMode === 'Array';
         
         let target = Math.min(index, data.length);
         target = Math.max(0, target);
 
-        // 1. Animate Traversal (finding the spot for Lists)
         if (isList) {
             if (target === data.length && data.length > 0) {
                 get().addLog(`Using Tail pointer to instantly insert at the end...`);
@@ -108,7 +122,6 @@ export const useStore = create((set, get) => ({
         const stagedId = nextId++;
 
         if (isList) {
-            // Phase 1: Create the node visually (detached)
             get().addLog(`Step 1: Creating new node (${value}) in memory`);
             set((state) => {
                 const newData = [...state.data];
@@ -119,7 +132,6 @@ export const useStore = create((set, get) => ({
             });
             await sleep(1500);
 
-            // Phase 2: Create the arrow pointer
             if (nodes.length > 0) {
                 get().addLog(`Step 2: Pointing new node to the existing structure`);
                 set((state) => {
@@ -131,7 +143,6 @@ export const useStore = create((set, get) => ({
 
             get().addLog(`Step 3: Merging node and updating Head/Tail pointers`);
         } else if (isArray) {
-            // Phase-by-phase shift for ArrayList
             if (target < data.length) {
                 get().addLog(`Shifting elements right to make space for ${value}...`);
                 for (let i = data.length - 1; i >= target; i--) {
@@ -148,7 +159,7 @@ export const useStore = create((set, get) => ({
                 return { data: newData, nodes: newNodes, highlightIndex: target };
             });
             await sleep(speedMs);
-        } else if (isStack) {
+        } else if (isStackAnim) {
             get().addLog(`Pushing ${value} onto the stack`);
             set((state) => {
                 const newData = [value, ...state.data];
@@ -156,7 +167,7 @@ export const useStore = create((set, get) => ({
                 return { data: newData, nodes: newNodes, highlightIndex: 0 };
             });
             await sleep(speedMs);
-        } else if (isQueue) {
+        } else if (isQueueAnim) {
             get().addLog(`Enqueueing ${value} to the back`);
             set((state) => {
                 const newData = [...state.data, value];
@@ -166,7 +177,6 @@ export const useStore = create((set, get) => ({
             await sleep(speedMs);
         }
 
-        // Finalize
         set((state) => {
             const newNodes = state.nodes.map(n => n.id === stagedId ? { id: n.id, value: n.value } : n);
             return { nodes: newNodes, highlightIndex: -1, isAnimating: false };
@@ -183,7 +193,6 @@ export const useStore = create((set, get) => ({
         get().addLog(`Searching for value ${value} to delete...`);
         let targetIndex = -1;
 
-        // Animate Traversal visually
         for (let i = 0; i < data.length; i++) {
             set({ highlightIndex: i });
             await sleep(speedMs / 1.5);
@@ -200,28 +209,30 @@ export const useStore = create((set, get) => ({
             return;
         }
 
-        // Defer actual removal to deleteAtIndex which handles the structural animations
         set({ isAnimating: false });
         await deleteAtIndex(targetIndex);
     },
 
     deleteAtIndex: async (index) => {
         if (get().isAnimating) return;
-        const { data, selectedStructure, speedMs } = get();
+        const { data, selectedStructure, implementationMode, speedMs } = get();
         
         if (index < 0 || index >= data.length) return;
 
         set({ isAnimating: true });
-        const isList = selectedStructure.includes('Linked List');
+        
         const isDoubly = selectedStructure === 'Doubly Linked List';
-        const isArray = selectedStructure === 'ArrayList';
         const isStack = selectedStructure === 'Stack';
         const isQueue = selectedStructure === 'Queue';
+        
+        const isList = selectedStructure.includes('Linked List') || ((isStack || isQueue) && implementationMode === 'Linked List');
+        const isArray = selectedStructure === 'ArrayList';
+        const isStackAnim = isStack && implementationMode === 'Array';
+        const isQueueAnim = isQueue && implementationMode === 'Array';
 
         if (isList) {
-            // O(1) Tail Deletion for Doubly Linked List
             if (isDoubly && index === data.length - 1 && data.length > 0) {
-                get().addLog(`Using Tail pointer to instantly find node to delete...`);
+                get().addLog(`Using Tail pointer to find node to delete...`);
                 set({ highlightIndex: index });
                 await sleep(speedMs);
             } else {
@@ -232,7 +243,6 @@ export const useStore = create((set, get) => ({
                 }
             }
 
-            // Phase 1 & 2 for lists
             get().addLog(`Step 1: Identified node ${data[index]} for removal`);
             set((state) => {
                 const newNodes = [...state.nodes];
@@ -254,26 +264,24 @@ export const useStore = create((set, get) => ({
             get().addLog(`Removing element at index ${index}`);
             set({ highlightIndex: index });
             await sleep(speedMs);
-        } else if (isStack) {
+        } else if (isStackAnim) {
             get().addLog(`Popping top element from the stack`);
             set({ highlightIndex: 0 });
             await sleep(speedMs);
-        } else if (isQueue) {
+        } else if (isQueueAnim) {
             get().addLog(`Dequeueing front element from the queue`);
             set({ highlightIndex: 0 });
             await sleep(speedMs);
         }
 
-        // Actual Deletion 
         set((state) => {
             const newData = [...state.data];
             const newNodes = [...state.nodes];
             newData.splice(index, 1);
             newNodes.splice(index, 1);
-            return { data: newData, nodes: newNodes, highlightIndex: index }; // Hold highlight at index for shifting
+            return { data: newData, nodes: newNodes, highlightIndex: index }; 
         });
 
-        // ArrayList Shift Aftermath
         if (isArray && index < data.length - 1) {
             await sleep(speedMs / 1.5);
             get().addLog(`Shifting remaining elements left...`);

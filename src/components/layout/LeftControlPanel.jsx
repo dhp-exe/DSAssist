@@ -10,35 +10,35 @@ export default function ControlPanel() {
     deleteAtIndex, 
     deleteByValue,
     updateAtIndex,
-    addItem,       
-    deleteItem,     
-    treeInsert,     
-    treeDelete,     
-    treeFind,       
+    addItem,
+    deleteItem,
+    treeInsert,
+    treeDelete,
+    treeFind,
     selectedStructure, 
+    implementationMode, 
+    setImplementationMode,
     data, 
     isAnimating 
   } = useStore()
 
-  // Detect currently selected structure
   const isList = selectedStructure.includes('Linked List')
   const isArray = selectedStructure === 'ArrayList'
   const isStack = selectedStructure === 'Stack'
   const isQueue = selectedStructure === 'Queue'
   const isTree = selectedStructure.startsWith('Trees')
 
-  // Safely handle Tree Operations 
   const handleTreeInsert = () => {
       const v = Number(value)
       if (treeInsert) treeInsert(v);
-      else addItem(v); // Fallback to basic array push
+      else addItem(v); 
       setValue('');
   }
 
   const handleTreeDelete = () => {
       const v = Number(value)
       if (treeDelete) treeDelete(v);
-      else deleteItem(v); // Fallback to basic array delete
+      else deleteItem(v); 
       setValue('');
   }
 
@@ -46,7 +46,6 @@ export default function ControlPanel() {
       const v = Number(value)
       if (treeFind) treeFind(v);
       else console.log(`Find ${v} not implemented in store yet`);
-      // Keeping the value in the input field is nice for search/find operations
   }
 
   return (
@@ -54,6 +53,36 @@ export default function ControlPanel() {
         <div className="mb-2 font-semibold">Control Panel</div>
 
         <div className="flex flex-col gap-3 mb-4">
+            {(isStack || isQueue) && (
+                <div className="flex flex-col gap-1 mb-2">
+                    <div className="text-xs font-semibold text-slate-500 uppercase">Implementation</div>
+                    <div className="flex gap-10 bg-slate-100 p-2 rounded border">
+                        <label className="text-sm flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="implementation"
+                                value="Array"
+                                checked={implementationMode === 'Array'}
+                                onChange={() => setImplementationMode('Array')}
+                                disabled={isAnimating}
+                            />
+                            Array
+                        </label>
+                        <label className="text-sm flex items-center gap-1 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="implementation"
+                                value="Linked List"
+                                checked={implementationMode === 'Linked List'}
+                                onChange={() => setImplementationMode('Linked List')}
+                                disabled={isAnimating}
+                            />
+                            Linked List
+                        </label>
+                    </div>
+                </div>
+            )}
+
             <input
                 type="number"
                 placeholder="Value (e.g., 42)"
