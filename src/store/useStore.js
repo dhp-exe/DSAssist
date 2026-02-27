@@ -47,17 +47,27 @@ export const useStore = create((set, get) => ({
     hashProbingMode: 'Linear',
     hashTable: getEmptyHashTable('Open Addressing'),
     stagedHashValue: null,
+
     // GRAPHS
     isDirected: false,
     isWeighted: false,
     graphRepresentation: 'Graph',
     graphNodes: initialGraphNodes,
     graphEdges: initialGraphEdges,
-    graphSelectedNode: null,
     
-    // Graph Animation Hooks
+    // Graph Interaction State
+    graphMode: 'select', 
+    graphSelectedNode: null,
+    graphSelectedEdge: null,
+    graphEdgeSource: null,
+    showGraphGuide: false,
+    
+    // Graph Anim Hooks
+    graphAlgorithm: null, 
     graphQueue: [],
     graphStack: [],
+    graphPQ: [],
+    graphDistances: {},
     graphVisited: [],
     graphTraversal: [],
     graphHighlightNodes: [],
@@ -92,8 +102,12 @@ export const useStore = create((set, get) => ({
             hashTable: JSON.parse(JSON.stringify(state.hashTable)), hashMode: state.hashMode, hashProbingMode: state.hashProbingMode, stagedHashValue: state.stagedHashValue,
             
             isDirected: state.isDirected, isWeighted: state.isWeighted, graphRepresentation: state.graphRepresentation,
-            graphNodes: JSON.parse(JSON.stringify(state.graphNodes)), graphEdges: JSON.parse(JSON.stringify(state.graphEdges)), graphSelectedNode: state.graphSelectedNode,
-            graphQueue: [...state.graphQueue], graphStack: [...state.graphStack], graphVisited: [...state.graphVisited], graphTraversal: [...state.graphTraversal],
+            graphNodes: JSON.parse(JSON.stringify(state.graphNodes)), graphEdges: JSON.parse(JSON.stringify(state.graphEdges)), 
+            graphMode: state.graphMode, graphSelectedNode: state.graphSelectedNode, graphSelectedEdge: state.graphSelectedEdge, graphEdgeSource: state.graphEdgeSource, showGraphGuide: state.showGraphGuide,
+            
+            graphAlgorithm: state.graphAlgorithm, graphQueue: [...state.graphQueue], graphStack: [...state.graphStack], 
+            graphPQ: JSON.parse(JSON.stringify(state.graphPQ)), graphDistances: JSON.parse(JSON.stringify(state.graphDistances)),
+            graphVisited: [...state.graphVisited], graphTraversal: [...state.graphTraversal],
             graphHighlightNodes: [...state.graphHighlightNodes], graphHighlightEdges: [...state.graphHighlightEdges], graphHighlightBackEdges: JSON.parse(JSON.stringify(state.graphHighlightBackEdges)),
 
             logs: [...state.logs], highlightIndex: state.highlightIndex, highlightNodeValue: state.highlightNodeValue,
@@ -108,8 +122,12 @@ export const useStore = create((set, get) => ({
             hashTable: frame.hashTable, hashMode: frame.hashMode, hashProbingMode: frame.hashProbingMode, stagedHashValue: frame.stagedHashValue,
             
             isDirected: frame.isDirected, isWeighted: frame.isWeighted, graphRepresentation: frame.graphRepresentation,
-            graphNodes: frame.graphNodes, graphEdges: frame.graphEdges, graphSelectedNode: frame.graphSelectedNode,
-            graphQueue: frame.graphQueue, graphStack: frame.graphStack, graphVisited: frame.graphVisited, graphTraversal: frame.graphTraversal,
+            graphNodes: frame.graphNodes, graphEdges: frame.graphEdges, 
+            graphMode: frame.graphMode, graphSelectedNode: frame.graphSelectedNode, graphSelectedEdge: frame.graphSelectedEdge, graphEdgeSource: frame.graphEdgeSource, showGraphGuide: frame.showGraphGuide,
+            
+            graphAlgorithm: frame.graphAlgorithm, graphQueue: frame.graphQueue, graphStack: frame.graphStack, 
+            graphPQ: frame.graphPQ, graphDistances: frame.graphDistances,
+            graphVisited: frame.graphVisited, graphTraversal: frame.graphTraversal,
             graphHighlightNodes: frame.graphHighlightNodes, graphHighlightEdges: frame.graphHighlightEdges, graphHighlightBackEdges: frame.graphHighlightBackEdges,
 
             logs: frame.logs, highlightIndex: frame.highlightIndex, highlightNodeValue: frame.highlightNodeValue,
@@ -128,8 +146,11 @@ export const useStore = create((set, get) => ({
             bTreeDegree: get().bTreeDegree, hashMode: get().hashMode, hashProbingMode: get().hashProbingMode, stagedHashValue: null,
             
             isDirected: get().isDirected, isWeighted: get().isWeighted, graphRepresentation: get().graphRepresentation,
-            graphNodes: JSON.parse(JSON.stringify(get().graphNodes)), graphEdges: JSON.parse(JSON.stringify(get().graphEdges)), graphSelectedNode: get().graphSelectedNode,
-            graphQueue: [], graphStack: [], graphVisited: [], graphTraversal: [], graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: []
+            graphNodes: JSON.parse(JSON.stringify(get().graphNodes)), graphEdges: JSON.parse(JSON.stringify(get().graphEdges)), 
+            graphMode: get().graphMode, graphSelectedNode: null, graphSelectedEdge: null, graphEdgeSource: null, showGraphGuide: false,
+            
+            graphAlgorithm: get().graphAlgorithm, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, 
+            graphVisited: [], graphTraversal: [], graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: []
         };
 
         frames = []; get()._recordFrame(); 
@@ -181,6 +202,8 @@ export const useStore = create((set, get) => ({
         set({
             data: [], nodes: [], treeActions: [], hashTable: getEmptyHashTable(get().hashMode), logs: [],
             highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            graphAlgorithm: null, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [],
+            graphNodes: [], graphEdges: [], graphSelectedNode: null, graphSelectedEdge: null, graphEdgeSource: null, showGraphGuide: false,
             frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null
         });
         get().addLog('Data cleared.');
@@ -228,9 +251,9 @@ export const useStore = create((set, get) => ({
         };
 
         if (!wasGraph || !isGraph) {
-            updates.graphQueue = []; updates.graphStack = []; updates.graphVisited = []; updates.graphTraversal = [];
+            updates.graphAlgorithm = null; updates.graphQueue = []; updates.graphStack = []; updates.graphPQ = []; updates.graphDistances = {}; updates.graphVisited = []; updates.graphTraversal = [];
             updates.graphHighlightNodes = []; updates.graphHighlightEdges = []; updates.graphHighlightBackEdges = [];
-            updates.graphSelectedNode = null;
+            updates.graphMode = 'select'; updates.graphSelectedNode = null; updates.graphSelectedEdge = null; updates.graphEdgeSource = null; updates.showGraphGuide = false;
         }
 
         set(updates);
@@ -302,7 +325,7 @@ export const useStore = create((set, get) => ({
     hashDelete: (value) => get()._runWithFrames(get()._hashDelete, 'hashDelete', [value]),
     graphBFS: (startNodeId) => get()._runWithFrames(get()._graphBFS, 'graphBFS', [startNodeId]),
     graphDFS: (startNodeId) => get()._runWithFrames(get()._graphDFS, 'graphDFS', [startNodeId]),
-
+    graphDijkstra: (startNodeId) => get()._runWithFrames(get()._graphDijkstra, 'graphDijkstra', [startNodeId]),
     // --- INTERNAL ACTION LOGIC ---
     _addAtIndex: async (index, value) => {
         const { selectedStructure, implementationMode, speedMs, data, nodes } = get();
@@ -798,124 +821,135 @@ export const useStore = create((set, get) => ({
         set({ highlightIndices: [], highlightType: '' });
     },
 
+    // ==========================================
+    // GRAPH
+    // ==========================================
+    setGraphMode: (mode) => set({ graphMode: mode, graphEdgeSource: null, graphSelectedNode: null, graphSelectedEdge: null, showGraphGuide: true }),
+    setGraphEdgeSource: (id) => set({ graphEdgeSource: id, showGraphGuide: false }),
+    setGraphSelectedEdge: (id) => set({ graphSelectedEdge: id, graphSelectedNode: null, showGraphGuide: false }),
     setGraphSelectedNode: (id) => {
-        const { graphSelectedNode, graphEdges, isDirected } = get();
-        if (graphSelectedNode === null) {
-            set({ graphSelectedNode: id });
-        } else if (graphSelectedNode === id) {
-            set({ graphSelectedNode: null }); 
-        } else {
-            const newEdgeId = `${graphSelectedNode}-${id}`;
-            const exists = graphEdges.some(e => e.id === newEdgeId || (!isDirected && e.id === `${id}-${graphSelectedNode}`));
-            if (!exists) {
-                set({ 
-                    graphEdges: [...graphEdges, { id: newEdgeId, source: graphSelectedNode, target: id, weight: '1' }],
-                    graphSelectedNode: null
-                });
-                get().addLog(`Added edge ${graphSelectedNode} → ${id}`);
-            } else {
-                set({ graphSelectedNode: null });
-            }
-        }
+        const { graphSelectedNode } = get();
+        if (graphSelectedNode === id) set({ graphSelectedNode: null, showGraphGuide: false });
+        else set({ graphSelectedNode: id, graphSelectedEdge: null, showGraphGuide: false });
     },
     updateGraphNodePosition: (id, x, y) => {
         set(state => ({ graphNodes: state.graphNodes.map(n => n.id === id ? { ...n, x, y } : n) }));
     },
-    addGraphNode: (id) => {
-        if (!id || get().graphNodes.some(n => n.id === id)) return;
-        set(state => ({ graphNodes: [...state.graphNodes, { id, x: Math.random() * 300 + 100, y: Math.random() * 300 + 100 }] }));
+    generateNextNodeId: () => {
+        const existingIds = new Set(get().graphNodes.map(n => n.id));
+        for (let i = 0; i < 26; i++) {
+            const char = String.fromCharCode(65 + i);
+            if (!existingIds.has(char)) return char;
+        }
+        return `N${Math.floor(Math.random() * 1000)}`;
+    },
+    addGraphNodeAtPos: (x, y) => {
+        const id = get().generateNextNodeId();
+        set(state => ({ graphNodes: [...state.graphNodes, { id, x, y }], showGraphGuide: false }));
         get().addLog(`Added node ${id}`);
     },
+    createGraphEdge: (source, target) => {
+        const { graphEdges, isDirected } = get();
+        const newEdgeId = `${source}-${target}`;
+        const exists = graphEdges.some(e => e.id === newEdgeId || (!isDirected && e.id === `${target}-${source}`));
+        if (!exists) {
+            set({ graphEdges: [...graphEdges, { id: newEdgeId, source, target, weight: '1' }], showGraphGuide: false });
+            get().addLog(`Added edge ${source} → ${target}`);
+        } else {
+            set({ showGraphGuide: false });
+        }
+    },
     removeGraphNode: (id) => {
-        set(state => ({
-            graphNodes: state.graphNodes.filter(n => n.id !== id),
-            graphEdges: state.graphEdges.filter(e => e.source !== id && e.target !== id),
-            graphSelectedNode: state.graphSelectedNode === id ? null : state.graphSelectedNode
-        }));
+        set(state => {
+            const newEdges = state.graphEdges.filter(e => e.source !== id && e.target !== id);
+            return {
+                graphNodes: state.graphNodes.filter(n => n.id !== id),
+                graphEdges: newEdges,
+                graphSelectedNode: state.graphSelectedNode === id ? null : state.graphSelectedNode,
+                graphEdgeSource: state.graphEdgeSource === id ? null : state.graphEdgeSource,
+                graphSelectedEdge: state.graphSelectedEdge && !newEdges.find(e => e.id === state.graphSelectedEdge) ? null : state.graphSelectedEdge,
+                showGraphGuide: false
+            };
+        });
         get().addLog(`Removed node ${id}`);
     },
     removeGraphEdge: (id) => {
-        set(state => ({ graphEdges: state.graphEdges.filter(e => e.id !== id) }));
+        set(state => ({ 
+            graphEdges: state.graphEdges.filter(e => e.id !== id),
+            graphSelectedEdge: state.graphSelectedEdge === id ? null : state.graphSelectedEdge,
+            showGraphGuide: false 
+        }));
         get().addLog(`Removed edge ${id}`);
     },
     updateGraphEdgeWeight: (id, weight) => {
-        set(state => ({ graphEdges: state.graphEdges.map(e => e.id === id ? { ...e, weight } : e) }));
+        set(state => ({ graphEdges: state.graphEdges.map(e => e.id === id ? { ...e, weight } : e), showGraphGuide: false }));
         get().addLog(`Updated edge weight for ${id}`);
     },
+    deleteSelectedGraphItem: () => {
+        const { graphSelectedNode, graphSelectedEdge } = get();
+        if (graphSelectedNode) get().removeGraphNode(graphSelectedNode);
+        else if (graphSelectedEdge) get().removeGraphEdge(graphSelectedEdge);
+    },
+
     _graphBFS: async (startNodeId) => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphQueue: [], graphVisited: [], graphTraversal: [] });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'BFS', graphQueue: [], graphVisited: [], graphTraversal: [] });
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
-        
-        if (!graphNodes.some(n => n.id === startNodeId)) {
-            get().addLog(`Node ${startNodeId} not found.`);
-            return;
-        }
+        if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
         
         get().addLog(`Starting BFS from ${startNodeId}...`);
         const steps = GraphAlgorithms.bfs(graphNodes, graphEdges, startNodeId, isDirected);
         
         for (let step of steps) {
-            if (step.op === 'init') {
-                set({ graphQueue: step.queue, graphVisited: step.visited, graphTraversal: step.traversal });
-                await sleep(speed);
-            } else if (step.op === 'visit') {
-                set({ graphHighlightNodes: [step.curr], graphQueue: step.queue, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightEdges: [] });
-                get().addLog(`Visiting node ${step.curr}`);
-                await sleep(speed);
-            } else if (step.op === 'check_edge') {
-                set({ graphHighlightNodes: [step.curr, step.neighbor], graphHighlightEdges: [`${step.curr}-${step.neighbor}`, `${step.neighbor}-${step.curr}`] });
-                await sleep(speed / 1.5);
-            } else if (step.op === 'enqueue') {
-                set({ graphQueue: step.queue, graphVisited: step.visited, graphTraversal: step.traversal });
-                get().addLog(`Enqueued node ${step.neighbor}`);
-                await sleep(speed);
-            } else if (step.op === 'done_node') {
-                set({ graphHighlightEdges: [] });
-            }
+            if (step.op === 'init') { set({ graphQueue: step.queue, graphVisited: step.visited, graphTraversal: step.traversal }); await sleep(speed); }
+            else if (step.op === 'visit') { set({ graphHighlightNodes: [step.curr], graphQueue: step.queue, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightEdges: [] }); get().addLog(`Visiting node ${step.curr}`); await sleep(speed); }
+            else if (step.op === 'check_edge') { set({ graphHighlightNodes: [step.curr, step.neighbor], graphHighlightEdges: [`${step.curr}-${step.neighbor}`, `${step.neighbor}-${step.curr}`] }); await sleep(speed / 1.5); }
+            else if (step.op === 'enqueue') { set({ graphQueue: step.queue, graphVisited: step.visited, graphTraversal: step.traversal }); get().addLog(`Enqueued node ${step.neighbor}`); await sleep(speed); }
+            else if (step.op === 'done_node') { set({ graphHighlightEdges: [] }); }
         }
         set({ graphHighlightNodes: [], graphHighlightEdges: [] });
         get().addLog(`BFS complete.`);
     },
 
     _graphDFS: async (startNodeId) => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphStack: [], graphVisited: [], graphTraversal: [] });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'DFS', graphStack: [], graphVisited: [], graphTraversal: [] });
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
-        
-        if (!graphNodes.some(n => n.id === startNodeId)) {
-            get().addLog(`Node ${startNodeId} not found.`);
-            return;
-        }
+        if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
         
         get().addLog(`Starting DFS from ${startNodeId}...`);
         const steps = GraphAlgorithms.dfs(graphNodes, graphEdges, startNodeId, isDirected);
         
         for (let step of steps) {
-            if (step.op === 'init') {
-                set({ graphStack: step.stack, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightBackEdges: step.backEdges });
-                await sleep(speed);
-            } else if (step.op === 'visit') {
-                set({ graphHighlightNodes: [step.curr], graphStack: step.stack, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightEdges: [] });
-                get().addLog(`Visiting node ${step.curr}`);
-                await sleep(speed);
-            } else if (step.op === 'check_edge') {
-                set({ graphHighlightNodes: [step.curr, step.neighbor], graphHighlightEdges: [`${step.curr}-${step.neighbor}`, `${step.neighbor}-${step.curr}`] });
-                await sleep(speed / 1.5);
-            } else if (step.op === 'push') {
-                set({ graphStack: step.stack, graphVisited: step.visited, graphTraversal: step.traversal });
-                get().addLog(`Pushed node ${step.neighbor} to stack`);
-                await sleep(speed);
-            } else if (step.op === 'back_edge') {
-                set({ graphHighlightBackEdges: step.backEdges });
-                get().addLog(`Back edge detected to ${step.neighbor}`);
-                await sleep(speed);
-            } else if (step.op === 'done_node') {
-                set({ graphHighlightEdges: [] });
-            }
+            if (step.op === 'init') { set({ graphStack: step.stack, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightBackEdges: step.backEdges }); await sleep(speed); }
+            else if (step.op === 'visit') { set({ graphHighlightNodes: [step.curr], graphStack: step.stack, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightEdges: [] }); get().addLog(`Visiting node ${step.curr}`); await sleep(speed); }
+            else if (step.op === 'check_edge') { set({ graphHighlightNodes: [step.curr, step.neighbor], graphHighlightEdges: [`${step.curr}-${step.neighbor}`, `${step.neighbor}-${step.curr}`] }); await sleep(speed / 1.5); }
+            else if (step.op === 'push') { set({ graphStack: step.stack, graphVisited: step.visited, graphTraversal: step.traversal }); get().addLog(`Pushed node ${step.neighbor} to stack`); await sleep(speed); }
+            else if (step.op === 'back_edge') { set({ graphHighlightBackEdges: step.backEdges }); get().addLog(`Back edge detected to ${step.neighbor}`); await sleep(speed); }
+            else if (step.op === 'done_node') { set({ graphHighlightEdges: [] }); }
         }
         set({ graphHighlightNodes: [], graphHighlightEdges: [] });
         get().addLog(`DFS complete.`);
+    },
+
+    _graphDijkstra: async (startNodeId) => {
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Dijkstra', graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [] });
+        const speed = get().speedMs;
+        const { graphNodes, graphEdges, isDirected } = get();
+        if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
+        
+        get().addLog(`Starting Dijkstra from ${startNodeId}...`);
+        const steps = GraphAlgorithms.dijkstra(graphNodes, graphEdges, startNodeId, isDirected);
+        
+        for (let step of steps) {
+            if (step.op === 'init') { set({ graphPQ: step.pq, graphDistances: step.distances, graphVisited: step.visited, graphTraversal: step.traversal }); await sleep(speed); }
+            else if (step.op === 'visit') { set({ graphHighlightNodes: [step.curr], graphPQ: step.pq, graphDistances: step.distances, graphVisited: step.visited, graphTraversal: step.traversal, graphHighlightEdges: [] }); get().addLog(`Visiting node ${step.curr} with distance ${step.distances[step.curr]}`); await sleep(speed); }
+            else if (step.op === 'check_edge') { set({ graphHighlightNodes: [step.curr, step.neighbor], graphHighlightEdges: [`${step.curr}-${step.neighbor}`, `${step.neighbor}-${step.curr}`] }); await sleep(speed / 1.5); }
+            else if (step.op === 'update_dist') { set({ graphPQ: step.pq, graphDistances: step.distances }); get().addLog(`Updated distance for ${step.neighbor} to ${step.distances[step.neighbor]}`); await sleep(speed); }
+            else if (step.op === 'done_node') { set({ graphHighlightEdges: [] }); }
+        }
+        set({ graphHighlightNodes: [], graphHighlightEdges: [] });
+        get().addLog(`Dijkstra complete.`);
     },
 }))
 

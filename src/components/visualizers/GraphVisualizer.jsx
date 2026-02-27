@@ -1,20 +1,28 @@
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../../store/useStore'
 
 export default function GraphVisualizer() {
     const isGeneratingFrames = useStore((s) => s.isGeneratingFrames)
+    const isAnimating = useStore(s => s.isAnimating)
     
-    // We fetch raw state, and cache it to prevent flashing during frame generation
+    // Fetch raw state
     const rawIsDirected = useStore(s => s.isDirected)
     const rawIsWeighted = useStore(s => s.isWeighted)
     const rawRep = useStore(s => s.graphRepresentation)
     const rawNodes = useStore(s => s.graphNodes)
     const rawEdges = useStore(s => s.graphEdges)
     const rawSelected = useStore(s => s.graphSelectedNode)
+    const rawMode = useStore(s => s.graphMode)
+    const rawEdgeSource = useStore(s => s.graphEdgeSource)
+    const rawSelectedEdge = useStore(s => s.graphSelectedEdge)
+    const rawShowGuide = useStore(s => s.showGraphGuide)
     
+    const rawAlgorithm = useStore(s => s.graphAlgorithm)
     const rawQ = useStore(s => s.graphQueue)
     const rawS = useStore(s => s.graphStack)
+    const rawPQ = useStore(s => s.graphPQ)
+    const rawDistances = useStore(s => s.graphDistances)
     const rawVis = useStore(s => s.graphVisited)
     const rawTrav = useStore(s => s.graphTraversal)
     const rawHN = useStore(s => s.graphHighlightNodes)
@@ -25,76 +33,143 @@ export default function GraphVisualizer() {
     if (!isGeneratingFrames) {
         cache.current = { 
             isDirected: rawIsDirected, isWeighted: rawIsWeighted, rep: rawRep, 
-            nodes: rawNodes, edges: rawEdges, sel: rawSelected,
-            q: rawQ, s: rawS, vis: rawVis, trav: rawTrav, hn: rawHN, he: rawHE, hbe: rawHBE
+            nodes: rawNodes, edges: rawEdges, sel: rawSelected, graphMode: rawMode, graphEdgeSource: rawEdgeSource, graphSelectedEdge: rawSelectedEdge, showGraphGuide: rawShowGuide,
+            graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, vis: rawVis, trav: rawTrav, hn: rawHN, he: rawHE, hbe: rawHBE
         }
     }
 
     const c = isGeneratingFrames ? cache.current : {
         isDirected: rawIsDirected, isWeighted: rawIsWeighted, rep: rawRep, 
-        nodes: rawNodes, edges: rawEdges, sel: rawSelected,
-        q: rawQ, s: rawS, vis: rawVis, trav: rawTrav, hn: rawHN, he: rawHE, hbe: rawHBE
+        nodes: rawNodes, edges: rawEdges, sel: rawSelected, graphMode: rawMode, graphEdgeSource: rawEdgeSource, graphSelectedEdge: rawSelectedEdge, showGraphGuide: rawShowGuide,
+        graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, vis: rawVis, trav: rawTrav, hn: rawHN, he: rawHE, hbe: rawHBE
     };
 
+    // Actions
+    const setGraphMode = useStore(s => s.setGraphMode)
     const setGraphSelectedNode = useStore(s => s.setGraphSelectedNode)
+    const setGraphSelectedEdge = useStore(s => s.setGraphSelectedEdge)
+    const setGraphEdgeSource = useStore(s => s.setGraphEdgeSource)
+    const createGraphEdge = useStore(s => s.createGraphEdge)
+    const addGraphNodeAtPos = useStore(s => s.addGraphNodeAtPos)
     const updateGraphNodePosition = useStore(s => s.updateGraphNodePosition)
+    const removeGraphNode = useStore(s => s.removeGraphNode)
     const removeGraphEdge = useStore(s => s.removeGraphEdge)
     const updateGraphEdgeWeight = useStore(s => s.updateGraphEdgeWeight)
-    const isAnimating = useStore(s => s.isAnimating)
+    const deleteSelectedGraphItem = useStore(s => s.deleteSelectedGraphItem)
 
-    const handleNodeClick = (id) => {
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            const state = useStore.getState();
+            if (state.graphMode === 'select' && (e.key === 'Delete' || e.key === 'Backspace')) {
+                state.deleteSelectedGraphItem();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    const handleNodeClick = (id, e) => {
+        e.stopPropagation();
         if (isAnimating) return;
-        setGraphSelectedNode(id);
+
+        if (c.graphMode === 'select') {
+            setGraphSelectedNode(id);
+        } else if (c.graphMode === 'add-edge') {
+            if (!c.graphEdgeSource) {
+                setGraphEdgeSource(id);
+            } else if (c.graphEdgeSource === id) {
+                setGraphEdgeSource(null);
+            } else {
+                createGraphEdge(c.graphEdgeSource, id);
+                setGraphEdgeSource(null);
+            }
+        } else if (c.graphMode === 'delete') {
+            removeGraphNode(id);
+        }
     }
 
-    const handleEdgeClick = (edge) => {
+    const handleEdgeClick = (edge, e) => {
+        e.stopPropagation();
         if (isAnimating) return;
-        const val = window.prompt(`Edge ${edge.source}-${edge.target}. Enter new weight to update, or leave empty to delete:`, edge.weight);
-        if (val === null) return; 
-        if (val.trim() === '') {
+
+        if (c.graphMode === 'select') {
+            setGraphSelectedEdge(edge.id);
+        } else if (c.graphMode === 'delete') {
             removeGraphEdge(edge.id);
-        } else {
-            updateGraphEdgeWeight(edge.id, val);
+        }
+    }
+
+    const handleEdgeDoubleClick = (edge, e) => {
+        e.stopPropagation();
+        if (isAnimating) return;
+        
+        if (c.graphMode === 'select') {
+            const val = window.prompt(`Edit weight for ${edge.source}-${edge.target}:`, edge.weight);
+            if (val !== null && val.trim() !== '') {
+                if (!isNaN(Number(val))) {
+                    updateGraphEdgeWeight(edge.id, val.trim());
+                } else {
+                    alert('Weight must be a valid number.');
+                }
+            }
+        }
+    }
+
+    const handleCanvasClick = (e) => {
+        if (isAnimating) return;
+        
+        if (c.graphMode === 'add-node') {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left - 24; 
+            const y = e.clientY - rect.top - 24;
+            addGraphNodeAtPos(x, y);
+        } else if (c.graphMode === 'add-edge') {
+            setGraphEdgeSource(null);
+        } else if (c.graphMode === 'select') {
+            if (c.sel) setGraphSelectedNode(null);
+            if (c.graphSelectedEdge) setGraphSelectedEdge(null);
         }
     }
 
     const renderGraph = () => {
         return (
-            <div className="relative w-full h-full min-h-[500px]">
+            <div className="relative w-full h-full min-h-[500px]" onClick={handleCanvasClick}>
                 <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
                     {c.edges.map(edge => {
                         const source = c.nodes.find(n => n.id === edge.source);
                         const target = c.nodes.find(n => n.id === edge.target);
                         if (!source || !target) return null;
                         
-                        const sx = source.x + 24;
-                        const sy = source.y + 24;
-                        const tx = target.x + 24;
-                        const ty = target.y + 24;
-                        
+                        const sx = source.x + 24; const sy = source.y + 24;
+                        const tx = target.x + 24; const ty = target.y + 24;
                         const angle = Math.atan2(ty - sy, tx - sx);
                         const r = 24; 
-                        const startX = sx + r * Math.cos(angle);
+                        
+                        const startX = sx + r * Math.cos(angle); 
                         const startY = sy + r * Math.sin(angle);
-                        const endX = tx - r * Math.cos(angle);
+                        
+                        const endX = tx - r * Math.cos(angle); 
                         const endY = ty - r * Math.sin(angle);
                         
                         const isHighlighted = c.he.includes(edge.id) || (!c.isDirected && c.he.includes(`${edge.target}-${edge.source}`));
                         const isBackEdge = c.hbe.some(be => (be.source === edge.source && be.target === edge.target) || (!c.isDirected && be.source === edge.target && be.target === edge.source));
-                        
+                        const isSelectedEdge = c.graphSelectedEdge === edge.id;
+
                         let color = '#cbd5e1'; 
                         let width = 2;
                         if (isHighlighted) { color = '#eab308'; width = 4; } 
-                        if (isBackEdge) { color = '#f43f5e'; width = 3; } 
+                        else if (isBackEdge) { color = '#f43f5e'; width = 3; } 
+                        else if (isSelectedEdge) { color = '#6366f1'; width = 4; }
                         
                         return (
-                            <g key={edge.id} className={!isAnimating ? "cursor-pointer pointer-events-auto" : "pointer-events-none"} onClick={() => handleEdgeClick(edge)}>
+                            <g key={edge.id} className={!isAnimating ? "cursor-pointer pointer-events-auto" : "pointer-events-none"} onClick={(e) => handleEdgeClick(edge, e)} onDoubleClick={(e) => handleEdgeDoubleClick(edge, e)}>
                                 <line x1={startX} y1={startY} x2={endX} y2={endY} stroke={color} strokeWidth={width} />
                                 {c.isDirected && (
-                                    <polygon points="0,-6 12,0 0,6" transform={`translate(${endX},${endY}) rotate(${angle * 180 / Math.PI})`} fill={color} />
+                                    <polygon points="-12,-6 0,0 -12,6" transform={`translate(${endX},${endY}) rotate(${angle * 180 / Math.PI})`} fill={color} />
                                 )}
                                 {c.isWeighted && (
-                                    <text x={(startX + endX)/2} y={(startY + endY)/2 - 8} fill="#475569" fontSize="14" fontWeight="bold" textAnchor="middle">
+                                    <text x={(startX + endX)/2} y={(startY + endY)/2 - 8} fill={isSelectedEdge ? "#4f46e5" : "#475569"} fontSize="14" fontWeight="bold" textAnchor="middle">
                                         {edge.weight}
                                     </text>
                                 )}
@@ -108,23 +183,25 @@ export default function GraphVisualizer() {
                     const isSelected = c.sel === node.id;
                     const isVisited = c.vis.includes(node.id);
                     const isHighlighted = c.hn.includes(node.id);
+                    const isSource = c.graphEdgeSource === node.id;
                     
                     let bg = "bg-white border-slate-300";
                     if (isSelected) bg = "bg-indigo-100 border-indigo-500 ring-4 ring-indigo-200 z-10";
                     else if (isHighlighted) bg = "bg-yellow-100 border-yellow-500 ring-4 ring-yellow-200 z-10";
+                    else if (isSource) bg = "bg-blue-100 border-blue-500 ring-4 ring-blue-200 z-10";
                     else if (isVisited) bg = "bg-emerald-100 border-emerald-500 z-10";
 
                     return (
                         <motion.div
                             key={node.id}
-                            drag={!isAnimating}
+                            drag={!isAnimating && c.graphMode === 'select'}
                             dragMomentum={false}
                             onDragEnd={(e, info) => updateGraphNodePosition(node.id, node.x + info.offset.x, node.y + info.offset.y)}
                             initial={false}
                             animate={{ x: node.x, y: node.y }}
                             transition={{ type: "tween", duration: 0 }}
-                            className={`absolute w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-slate-700 shadow-sm cursor-grab active:cursor-grabbing ${bg}`}
-                            onClick={() => handleNodeClick(node.id)}
+                            className={`absolute w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-slate-700 shadow-sm z-10 ${!isAnimating && c.graphMode === 'select' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${bg}`}
+                            onClick={(e) => handleNodeClick(node.id, e)}
                             style={{ top: 0, left: 0 }}
                         >
                             {node.id}
@@ -135,16 +212,13 @@ export default function GraphVisualizer() {
         )
     }
 
-    const renderMatrix = () => {
+    const renderMatrix = () => { /* identical */
         const sorted = [...c.nodes].sort((a,b) => a.id.localeCompare(b.id));
         return (
             <div className="p-8">
                 <table className="border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
                     <thead>
-                        <tr>
-                            <th className="border p-3 bg-slate-100"></th>
-                            {sorted.map(n => <th key={n.id} className="border p-3 bg-slate-100 min-w-[3rem] text-slate-600">{n.id}</th>)}
-                        </tr>
+                        <tr><th className="border p-3 bg-slate-100"></th>{sorted.map(n => <th key={n.id} className="border p-3 bg-slate-100 min-w-[3rem] text-slate-600">{n.id}</th>)}</tr>
                     </thead>
                     <tbody>
                         {sorted.map(row => (
@@ -154,11 +228,7 @@ export default function GraphVisualizer() {
                                     const edge = c.edges.find(e => (e.source === row.id && e.target === col.id) || (!c.isDirected && e.source === col.id && e.target === row.id));
                                     const isHighlighted = c.he.includes(`${row.id}-${col.id}`) || (!c.isDirected && c.he.includes(`${col.id}-${row.id}`));
                                     const cellBg = isHighlighted ? 'bg-yellow-100 text-yellow-800 font-bold border-yellow-300' : 'text-slate-500';
-                                    return (
-                                        <td key={col.id} className={`border p-3 text-center ${cellBg}`}>
-                                            {edge ? (c.isWeighted ? edge.weight : '1') : '0'}
-                                        </td>
-                                    )
+                                    return <td key={col.id} className={`border p-3 text-center ${cellBg}`}>{edge ? (c.isWeighted ? edge.weight : '1') : '0'}</td>
                                 })}
                             </tr>
                         ))}
@@ -168,21 +238,18 @@ export default function GraphVisualizer() {
         )
     }
 
-    const renderList = () => {
+    const renderList = () => { /* identical */
         const sorted = [...c.nodes].sort((a,b) => a.id.localeCompare(b.id));
         return (
             <div className="p-8 flex flex-col gap-3">
                 {sorted.map(n => {
                     const neighbors = c.edges.filter(e => e.source === n.id || (!c.isDirected && e.target === n.id)).map(e => {
-                        const target = e.source === n.id ? e.target : e.source;
-                        return { target, weight: e.weight, edgeId: e.id };
+                        const target = e.source === n.id ? e.target : e.source; return { target, weight: e.weight, edgeId: e.id };
                     }).sort((a,b) => a.target.localeCompare(b.target));
 
                     return (
                         <div key={n.id} className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded bg-indigo-100 border-2 border-indigo-400 flex items-center justify-center font-bold text-indigo-800 shadow-sm ${c.hn.includes(n.id) ? 'ring-4 ring-yellow-300' : ''}`}>
-                                {n.id}
-                            </div>
+                            <div className={`w-12 h-12 rounded bg-indigo-100 border-2 border-indigo-400 flex items-center justify-center font-bold text-indigo-800 shadow-sm ${c.hn.includes(n.id) ? 'ring-4 ring-yellow-300' : ''}`}>{n.id}</div>
                             <div className="text-slate-400 font-bold">→</div>
                             {neighbors.map((nbr, idx) => {
                                 const isHighlighted = c.he.includes(nbr.edgeId) || (!c.isDirected && (c.he.includes(`${n.id}-${nbr.target}`) || c.he.includes(`${nbr.target}-${n.id}`)));
@@ -205,6 +272,33 @@ export default function GraphVisualizer() {
 
     return (
         <div className="h-full w-full flex flex-col bg-slate-50 relative overflow-hidden border rounded-lg">
+            
+            {/* Interaction Toolbar Overlay */}
+            {c.rep === 'Graph' && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center z-30">
+                    <div className="bg-white border border-slate-300 shadow-sm rounded-lg flex p-1">
+                        {['select', 'add-node', 'add-edge', 'delete'].map(mode => (
+                            <button
+                                key={mode}
+                                onClick={() => { if (!isAnimating) setGraphMode(mode); }}
+                                disabled={isAnimating}
+                                className={`px-4 py-1.5 text-sm font-semibold rounded capitalize transition-colors ${c.graphMode === mode ? 'bg-indigo-100 text-indigo-800' : 'text-slate-600 hover:bg-slate-100'}`}
+                            >
+                                {mode.replace('-', ' ')}
+                            </button>
+                        ))}
+                    </div>
+                    {c.showGraphGuide && !isAnimating && (
+                        <div className="mt-2 px-4 py-1.5 bg-slate-800/80 text-white text-xs rounded-full shadow-md animate-fade-in backdrop-blur-sm">
+                            {c.graphMode === 'select' && "Drag nodes or click to select. Press Delete to remove."}
+                            {c.graphMode === 'add-node' && "Click empty space to add a node."}
+                            {c.graphMode === 'add-edge' && (c.graphEdgeSource ? "Click another node to connect." : "Click a node to start an edge.")}
+                            {c.graphMode === 'delete' && "Click a node or edge to delete it."}
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div className="flex-1 overflow-auto relative">
                 {c.rep === 'Graph' && renderGraph()}
                 {c.rep === 'Adjacency Matrix' && renderMatrix()}
@@ -212,48 +306,76 @@ export default function GraphVisualizer() {
             </div>
             
             {/* Traversal Info Bar */}
-            {(c.q.length > 0 || c.s.length > 0 || c.vis.length > 0) && (
+            {(c.graphAlgorithm) && (
                 <div className="bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col gap-3 z-20 overflow-auto max-h-48">
-                    {c.q.length > 0 && (
+                    
+                    {c.graphAlgorithm === 'BFS' && (
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Queue:</span>
-                            <div className="flex gap-2 flex-wrap">
+                            <div className="flex gap-2 flex-wrap min-h-[32px]">
                                 <div className="text-slate-400 font-mono text-sm self-center">Front →</div>
-                                {c.q.map((item, i) => (
+                                {c.q && c.q.map((item, i) => (
                                     <div key={i} className="w-8 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded font-bold text-indigo-700 shadow-sm">{item}</div>
                                 ))}
                             </div>
                         </div>
                     )}
-                    {c.s.length > 0 && (
+
+                    {c.graphAlgorithm === 'DFS' && (
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Stack:</span>
-                            <div className="flex gap-2 flex-wrap">
+                            <div className="flex gap-2 flex-wrap min-h-[32px]">
                                 <div className="text-slate-400 font-mono text-sm self-center">Top →</div>
-                                {[...c.s].reverse().map((item, i) => (
+                                {c.s && [...c.s].reverse().map((item, i) => (
                                     <div key={i} className="w-8 h-8 border bg-rose-50 border-rose-200 flex items-center justify-center rounded font-bold text-rose-700 shadow-sm">{item}</div>
                                 ))}
                             </div>
                         </div>
                     )}
-                    {c.vis.length > 0 && (
-                        <div className="flex items-center gap-3">
-                            <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Visited:</span>
-                            <div className="flex gap-2 flex-wrap">
-                                {c.vis.map((item, i) => (
-                                    <div key={i} className="w-8 h-8 border bg-emerald-50 border-emerald-300 flex items-center justify-center rounded-full font-bold text-emerald-800">{item}</div>
-                                ))}
+
+                    {c.graphAlgorithm === 'Dijkstra' && (
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">PQ:</span>
+                                <div className="flex gap-2 flex-wrap min-h-[32px]">
+                                    {c.pq && c.pq.map((item, i) => (
+                                        <div key={i} className="px-2 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded text-indigo-700 shadow-sm text-sm">
+                                            <span className="font-bold">{item.id}</span>
+                                            <span className="text-xs ml-1 font-mono">({item.dist === Infinity ? '∞' : item.dist})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Distances:</span>
+                                <div className="flex gap-2 flex-wrap min-h-[32px]">
+                                    {Object.entries(c.distances || {}).map(([id, dist]) => (
+                                        <div key={id} className="px-2 py-1 border bg-slate-50 border-slate-200 flex items-center justify-center rounded text-slate-600 text-sm">
+                                            <span className="font-bold mr-1">{id}:</span>
+                                            <span className="font-mono">{dist === Infinity ? '∞' : dist}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
-                    {c.trav.length > 0 && (
-                        <div className="flex items-center gap-3 mt-1 pt-3 border-t">
-                            <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Order:</span>
-                            <div className="flex gap-2 text-slate-700 font-bold tracking-widest flex-wrap">
-                                {c.trav.join(' → ')}
-                            </div>
+
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Visited:</span>
+                        <div className="flex gap-2 flex-wrap min-h-[32px]">
+                            {c.vis && c.vis.map((item, i) => (
+                                <div key={i} className="w-8 h-8 border bg-emerald-50 border-emerald-300 flex items-center justify-center rounded-full font-bold text-emerald-800">{item}</div>
+                            ))}
                         </div>
-                    )}
+                    </div>
+                    
+                    <div className="flex items-center gap-3 mt-1 pt-3 border-t min-h-[40px]">
+                        <span className="text-xs font-bold uppercase text-slate-500 w-20 text-right shrink-0">Order:</span>
+                        <div className="flex gap-2 text-slate-700 font-bold tracking-widest flex-wrap">
+                            {c.trav && c.trav.join(' → ')}
+                        </div>
+                    </div>
+
                 </div>
             )}
         </div>

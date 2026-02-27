@@ -65,7 +65,7 @@ export class GraphAlgorithms {
                 traversal.push(u);
                 steps.push({ op: 'visit', curr: u, stack: [...stack], visited: Array.from(visited), traversal: [...traversal], backEdges: [...backEdges] });
                 
-                const neighbors = [...adj[u]].reverse(); // Reverse so it visits alphabetical alphabetically due to stack LIFO
+                const neighbors = [...adj[u]].reverse(); 
                 for (let neighbor of neighbors) {
                     const v = neighbor.target;
                     steps.push({ op: 'check_edge', curr: u, neighbor: v, stack: [...stack], visited: Array.from(visited), traversal: [...traversal], backEdges: [...backEdges] });
@@ -80,6 +80,52 @@ export class GraphAlgorithms {
                 }
                 steps.push({ op: 'done_node', curr: u, stack: [...stack], visited: Array.from(visited), traversal: [...traversal], backEdges: [...backEdges] });
             }
+        }
+        return steps;
+    }
+
+    static dijkstra(nodes, edges, startNodeId, isDirected) {
+        const steps = [];
+        const adj = this.getAdjacencyList(nodes, edges, isDirected);
+        const distances = {};
+        const visited = new Set();
+        const traversal = [];
+        
+        nodes.forEach(n => distances[n.id] = Infinity);
+        distances[startNodeId] = 0;
+        
+        const pq = [{ id: startNodeId, dist: 0 }];
+        steps.push({ op: 'init', pq: [...pq], distances: { ...distances }, visited: Array.from(visited), traversal: [...traversal] });
+        
+        while (pq.length > 0) {
+            pq.sort((a, b) => a.dist - b.dist);
+            const { id: u, dist: d } = pq.shift();
+            
+            if (visited.has(u)) continue;
+            
+            visited.add(u);
+            traversal.push(u);
+            steps.push({ op: 'visit', curr: u, pq: [...pq], distances: { ...distances }, visited: Array.from(visited), traversal: [...traversal] });
+            
+            for (let neighbor of adj[u]) {
+                const v = neighbor.target;
+                const weight = parseFloat(neighbor.weight);
+                if (isNaN(weight)) continue; 
+                
+                if (visited.has(v)) continue;
+                
+                steps.push({ op: 'check_edge', curr: u, neighbor: v, pq: [...pq], distances: { ...distances }, visited: Array.from(visited), traversal: [...traversal] });
+                
+                if (distances[u] + weight < distances[v]) {
+                    distances[v] = distances[u] + weight;
+                    const existingIdx = pq.findIndex(item => item.id === v);
+                    if (existingIdx > -1) pq[existingIdx].dist = distances[v];
+                    else pq.push({ id: v, dist: distances[v] });
+                    
+                    steps.push({ op: 'update_dist', curr: u, neighbor: v, pq: [...pq], distances: { ...distances }, visited: Array.from(visited), traversal: [...traversal] });
+                }
+            }
+            steps.push({ op: 'done_node', curr: u, pq: [...pq], distances: { ...distances }, visited: Array.from(visited), traversal: [...traversal] });
         }
         return steps;
     }

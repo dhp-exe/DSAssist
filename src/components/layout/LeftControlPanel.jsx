@@ -4,12 +4,14 @@ import { useStore } from '../../store/useStore'
 export default function ControlPanel() {
   const [value, setValue] = useState('')
   const [index, setIndex] = useState('')
+  const [graphStartNode, setGraphStartNode] = useState('') 
+
   const { 
     randomize, addAtIndex, deleteAtIndex, deleteByValue, updateAtIndex, addItem, deleteItem, 
     treeInsert, treeDelete, treeFind, bTreeDegree, setBTreeDegree,
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
     hashMode, setHashMode, hashProbingMode, setHashProbingMode, hashInsert, hashDelete,
-    isDirected, setIsDirected, isWeighted, setIsWeighted, graphRepresentation, setGraphRepresentation, addGraphNode, removeGraphNode, graphBFS, graphDFS,
+    isDirected, setIsDirected, isWeighted, setIsWeighted, graphRepresentation, setGraphRepresentation, graphBFS, graphDFS, graphDijkstra,
     selectedStructure, implementationMode, setImplementationMode, data, isAnimating 
   } = useStore()
 
@@ -135,7 +137,9 @@ export default function ControlPanel() {
                 </div>
             )}
 
-            <input type="text" placeholder={isGraph ? "Node ID (e.g. A)" : "Value (e.g., 42)"} value={value} onChange={(e) => setValue(e.target.value)} className="px-2 py-1 border rounded w-full disabled:bg-slate-100" disabled={isAnimating} />
+            {!isGraph && (
+                <input type="number" placeholder="Value (e.g., 42)" value={value} onChange={(e) => setValue(e.target.value)} className="px-2 py-1 border rounded w-full disabled:bg-slate-100" disabled={isAnimating} />
+            )}
             
             {(isList || isArray) && (
                 <input type="number" placeholder="Index (e.g., 2)" value={index} onChange={(e) => setIndex(e.target.value)} className="px-2 py-1 border rounded w-full disabled:bg-slate-100" disabled={isAnimating} />
@@ -231,21 +235,23 @@ export default function ControlPanel() {
 
             {isGraph && (
                 <>
-                    <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Graph Modifications</div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button disabled={isAnimating || !value} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { addGraphNode(value); setValue(''); }}>Add Node</button>
-                        <button disabled={isAnimating || !value} className="py-1 bg-rose-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { removeGraphNode(value); setValue(''); }}>Remove Node</button>
-                    </div>
                     <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Algorithms</div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button disabled={isAnimating || !value} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { graphBFS(value); setValue(''); }}>Run BFS</button>
-                        <button disabled={isAnimating || !value} className="py-1 bg-purple-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { graphDFS(value); setValue(''); }}>Run DFS</button>
-                    </div>
-                    <div className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded border border-slate-200">
-                        <span className="font-bold">Tips:</span><br/>
-                        • Click two nodes sequentially to add an edge.<br/>
-                        • Click an existing edge to edit its weight or delete it.<br/>
-                        • Drag nodes to reposition them.
+                    <input 
+                        type="text" 
+                        placeholder="Start Node (e.g. A)" 
+                        value={graphStartNode} 
+                        onChange={(e) => {
+                            const val = e.target.value.toUpperCase();
+                            if (/^[A-Z0-9]*$/.test(val)) setGraphStartNode(val);
+                        }} 
+                        className="px-2 py-1 border rounded w-full disabled:bg-slate-100 mb-2 font-bold text-slate-700 uppercase" 
+                        disabled={isAnimating} 
+                        maxLength={4}
+                    />
+                    <div className="grid grid-cols-3 gap-2">
+                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphBFS(graphStartNode)}>BFS</button>
+                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-purple-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDFS(graphStartNode)}>DFS</button>
+                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDijkstra(graphStartNode)}>Dijkstra</button>
                     </div>
                 </>
             )}
