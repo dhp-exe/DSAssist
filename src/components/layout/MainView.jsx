@@ -4,13 +4,16 @@ import PlaybackToolbar from '../PlaybackToolbar'
 import LinearVisualizer from '../visualizers/LinearVisualizer'
 import TreeVisualizer from '../visualizers/TreeVisualizer'
 import HeapVisualizer from '../visualizers/HeapVisualizer'
+import HashVisualizer from '../visualizers/HashVisualizer'
+import GraphVisualizer from '../visualizers/GraphVisualizer'
 
 export default function MainView() {
   const selected = useStore((s) => s.selectedStructure)
 
   const linearTypes = ['Singly Linked List', 'Doubly Linked List', 'ArrayList', 'Stack', 'Queue']
   const isTree = selected.startsWith('Trees')
-
+  const isGraph = selected === 'Graphs' || selected === 'Algorithms - DFS' || selected === 'Algorithms - BFS'
+  
   return (
     <div className="h-full flex flex-col">
       <PlaybackToolbar />
@@ -21,6 +24,10 @@ export default function MainView() {
           <TreeVisualizer type={selected} />
         ) : selected === 'Heaps' ? (
           <HeapVisualizer />
+        ) : selected === 'Hash' ? (
+          <HashVisualizer />
+        ) : isGraph ? (
+          <GraphVisualizer />
         ) : (
           <div className="h-full flex items-center justify-center text-slate-500">
             Visualization for "{selected}" is not implemented yet.
