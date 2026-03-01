@@ -11,9 +11,16 @@ export default function ControlPanel() {
     treeInsert, treeDelete, treeFind, bTreeDegree, setBTreeDegree,
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
     hashMode, setHashMode, hashProbingMode, setHashProbingMode, hashInsert, hashDelete,
-    isDirected, setIsDirected, isWeighted, setIsWeighted, graphRepresentation, setGraphRepresentation, graphBFS, graphDFS, graphDijkstra,
-    selectedStructure, implementationMode, setImplementationMode, data, isAnimating 
+    isDirected, setIsDirected, isWeighted, setIsWeighted, graphRepresentation, setGraphRepresentation, 
+    graphBFS, graphDFS, graphDijkstra, graphPrim, graphKruskal,
+    selectedStructure, implementationMode, setImplementationMode, data, isAnimating,
+    graphEdges
   } = useStore()
+
+  const negativeExists = isWeighted && graphEdges.some(e => {
+    const w = parseFloat(e.weight);
+    return !isNaN(w) && w < 0;
+  });
 
   const isList = selectedStructure.includes('Linked List')
   const isArray = selectedStructure === 'ArrayList'
@@ -251,7 +258,31 @@ export default function ControlPanel() {
                     <div className="grid grid-cols-3 gap-2">
                         <button disabled={isAnimating || !graphStartNode} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphBFS(graphStartNode)}>BFS</button>
                         <button disabled={isAnimating || !graphStartNode} className="py-1 bg-purple-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDFS(graphStartNode)}>DFS</button>
-                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDijkstra(graphStartNode)}>Dijkstra</button>
+                        <button disabled={isAnimating || !graphStartNode || !isWeighted || negativeExists} title={negativeExists ? "Negative edge exists" : undefined} className="py-1 bg-blue-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDijkstra(graphStartNode)}>Dijkstra</button>
+                    </div>
+                    
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Min Spanning Tree</div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button 
+                            disabled={isAnimating || !graphStartNode || !isWeighted || isDirected} 
+                            title={isDirected ? "Requires Undirected Graph" : !isWeighted ? "Requires Weighted Graph" : undefined}
+                            className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" 
+                            onClick={() => graphPrim(graphStartNode)}
+                        >
+                            Prim's
+                        </button>
+                        <button 
+                            disabled={isAnimating || !isWeighted || isDirected} 
+                            title={isDirected ? "Requires Undirected Graph" : !isWeighted ? "Requires Weighted Graph" : undefined}
+                            className="py-1 bg-emerald-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" 
+                            onClick={() => graphKruskal()}
+                        >
+                            Kruskal's
+                        </button>
+                    </div>
+
+                    <div className="text-xs text-slate-500 mt-4 bg-slate-50 p-2.5 rounded border border-slate-200">
+                        <span className="font-bold text-slate-600">Tip:</span> Use the <span className="font-semibold text-indigo-500">Toolbar</span> inside the canvas map to create and delete nodes/edges.
                     </div>
                 </>
             )}
