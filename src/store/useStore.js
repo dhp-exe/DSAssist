@@ -69,6 +69,7 @@ export const useStore = create((set, get) => ({
     graphPQ: [],
     graphDistances: {},
     graphInDegrees: {},
+    graphIteration: 0,
     graphVisited: [],
     graphTraversal: [],
     graphMSTEdges: [],
@@ -110,7 +111,7 @@ export const useStore = create((set, get) => ({
             
             graphAlgorithm: state.graphAlgorithm, graphQueue: [...state.graphQueue], graphStack: [...state.graphStack], 
             graphPQ: JSON.parse(JSON.stringify(state.graphPQ)), graphDistances: JSON.parse(JSON.stringify(state.graphDistances)),
-            graphInDegrees: JSON.parse(JSON.stringify(state.graphInDegrees)),
+            graphInDegrees: JSON.parse(JSON.stringify(state.graphInDegrees)), graphIteration: state.graphIteration,
             graphVisited: [...state.graphVisited], graphTraversal: [...state.graphTraversal],
             graphMSTEdges: [...state.graphMSTEdges], graphDisjointSets: JSON.parse(JSON.stringify(state.graphDisjointSets)),
             graphHighlightNodes: [...state.graphHighlightNodes], graphHighlightEdges: [...state.graphHighlightEdges], graphHighlightBackEdges: JSON.parse(JSON.stringify(state.graphHighlightBackEdges)),
@@ -131,7 +132,7 @@ export const useStore = create((set, get) => ({
             graphMode: frame.graphMode, graphSelectedNode: frame.graphSelectedNode, graphSelectedEdge: frame.graphSelectedEdge, graphEdgeSource: frame.graphEdgeSource, showGraphGuide: frame.showGraphGuide,
             
             graphAlgorithm: frame.graphAlgorithm, graphQueue: frame.graphQueue, graphStack: frame.graphStack, 
-            graphPQ: frame.graphPQ, graphDistances: frame.graphDistances, graphInDegrees: frame.graphInDegrees,
+            graphPQ: frame.graphPQ, graphDistances: frame.graphDistances, graphInDegrees: frame.graphInDegrees, graphIteration: frame.graphIteration,
             graphVisited: frame.graphVisited, graphTraversal: frame.graphTraversal,
             graphMSTEdges: frame.graphMSTEdges, graphDisjointSets: frame.graphDisjointSets,
             graphHighlightNodes: frame.graphHighlightNodes, graphHighlightEdges: frame.graphHighlightEdges, graphHighlightBackEdges: frame.graphHighlightBackEdges,
@@ -155,7 +156,7 @@ export const useStore = create((set, get) => ({
             graphNodes: JSON.parse(JSON.stringify(get().graphNodes)), graphEdges: JSON.parse(JSON.stringify(get().graphEdges)), 
             graphMode: get().graphMode, graphSelectedNode: null, graphSelectedEdge: null, graphEdgeSource: null, showGraphGuide: false,
             
-            graphAlgorithm: get().graphAlgorithm, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphInDegrees: {}, 
+            graphAlgorithm: get().graphAlgorithm, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphInDegrees: {}, graphIteration: 0,
             graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: []
         };
 
@@ -208,7 +209,7 @@ export const useStore = create((set, get) => ({
         set({
             data: [], nodes: [], treeActions: [], hashTable: getEmptyHashTable(get().hashMode), logs: [],
             highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
-            graphAlgorithm: null, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphInDegrees: {}, graphVisited: [], graphTraversal: [], 
+            graphAlgorithm: null, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphInDegrees: {}, graphIteration: 0, graphVisited: [], graphTraversal: [], 
             graphMSTEdges: [], graphDisjointSets: {}, graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [],
             graphNodes: [], graphEdges: [], graphSelectedNode: null, graphSelectedEdge: null, graphEdgeSource: null, showGraphGuide: false,
             frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null
@@ -259,7 +260,7 @@ export const useStore = create((set, get) => ({
 
         if (!wasGraph || !isGraph) {
             updates.graphAlgorithm = null; updates.graphQueue = []; updates.graphStack = []; updates.graphPQ = []; updates.graphDistances = {}; 
-            updates.graphInDegrees = {}; updates.graphVisited = []; updates.graphTraversal = []; updates.graphMSTEdges = []; updates.graphDisjointSets = {};
+            updates.graphInDegrees = {}; updates.graphIteration = 0; updates.graphVisited = []; updates.graphTraversal = []; updates.graphMSTEdges = []; updates.graphDisjointSets = {};
             updates.graphHighlightNodes = []; updates.graphHighlightEdges = []; updates.graphHighlightBackEdges = [];
             updates.graphMode = 'select'; updates.graphSelectedNode = null; updates.graphSelectedEdge = null; updates.graphEdgeSource = null; updates.showGraphGuide = false;
         }
@@ -279,7 +280,7 @@ export const useStore = create((set, get) => ({
         if (selectedStructure === 'Trees - B-Tree') {
             if (bTreeDegree === 3) n = 8; else if (bTreeDegree === 4) n = 9; else if (bTreeDegree === 5) n = 10;
         } else {
-            n = typeof count === 'number' ? count : (4 + Math.floor(Math.random() * 2));
+            n = typeof count === 'number' ? count : (5 + Math.floor(Math.random() * 2));
         }
 
         const arr = Array.from({ length: n }, () => randomInt(1, 100));
@@ -337,6 +338,7 @@ export const useStore = create((set, get) => ({
     graphPrim: (startNodeId) => get()._runWithFrames(get()._graphPrim, 'graphPrim', [startNodeId]),
     graphKruskal: () => get()._runWithFrames(get()._graphKruskal, 'graphKruskal', []),
     graphTopoSort: () => get()._runWithFrames(get()._graphTopoSort, 'graphTopoSort', []),
+    graphBellmanFord: (startNodeId) => get()._runWithFrames(get()._graphBellmanFord, 'graphBellmanFord', [startNodeId]),
 
     // --- INTERNAL ACTION LOGIC ---
     _addAtIndex: async (index, value) => {
@@ -905,7 +907,7 @@ export const useStore = create((set, get) => ({
 
     // Graph algorithms
     _graphBFS: async (startNodeId) => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'BFS', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'BFS', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphIteration: 0, });
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
         if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
@@ -925,7 +927,7 @@ export const useStore = create((set, get) => ({
     },
 
     _graphDFS: async (startNodeId) => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'DFS', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'DFS', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphIteration: 0,});
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
         if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
@@ -946,7 +948,7 @@ export const useStore = create((set, get) => ({
     },
 
     _graphDijkstra: async (startNodeId) => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Dijkstra', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Dijkstra', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphIteration: 0, });
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
         if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
@@ -966,7 +968,7 @@ export const useStore = create((set, get) => ({
     },
 
     _graphPrim: async (startNodeId) => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Prim', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Prim', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphIteration: 0, });
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
         if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
@@ -985,7 +987,7 @@ export const useStore = create((set, get) => ({
     },
 
     _graphKruskal: async () => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Kruskal', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'Kruskal', graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphIteration: 0, });
         const speed = get().speedMs;
         const { graphNodes, graphEdges } = get();
         
@@ -1001,7 +1003,7 @@ export const useStore = create((set, get) => ({
         get().addLog(`Kruskal's MST complete.`);
     },
     _graphTopoSort: async () => {
-        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'TopoSort', graphQueue: [], graphInDegrees: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'TopoSort', graphQueue: [], graphInDegrees: {}, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphIteration: 0, });
         const speed = get().speedMs;
         const { graphNodes, graphEdges, isDirected } = get();
         if (!isDirected) { get().addLog(`Topological Sort requires a directed graph.`); return; }
@@ -1019,6 +1021,26 @@ export const useStore = create((set, get) => ({
         }
         set({ graphHighlightNodes: [], graphHighlightEdges: [] });
         get().addLog(`Topological Sort complete.`);
+    },
+
+    _graphBellmanFord: async (startNodeId) => {
+        set({ graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [], graphAlgorithm: 'BellmanFord', graphDistances: {}, graphIteration: 0, graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {} });
+        const speed = get().speedMs;
+        const { graphNodes, graphEdges, isDirected } = get();
+        if (!graphNodes.some(n => n.id === startNodeId)) { get().addLog(`Node ${startNodeId} not found.`); return; }
+        
+        get().addLog(`Starting Bellman-Ford from ${startNodeId}...`);
+        const steps = GraphAlgorithms.bellmanFord(graphNodes, graphEdges, startNodeId, isDirected);
+        
+        for (let step of steps) {
+            if (step.op === 'init') { set({ graphDistances: step.distances, graphIteration: step.iteration }); await sleep(speed); }
+            else if (step.op === 'iteration') { set({ graphIteration: step.iteration, graphHighlightEdges: [], graphHighlightNodes: [] }); get().addLog(`Iteration ${step.iteration} of ${graphNodes.length - 1}`); await sleep(speed); }
+            else if (step.op === 'check_edge') { set({ graphHighlightNodes: [step.curr, step.neighbor], graphHighlightEdges: [step.edgeId] }); await sleep(speed / 1.5); }
+            else if (step.op === 'update_dist') { set({ graphDistances: step.distances }); get().addLog(`Updated distance for ${step.neighbor} to ${step.distances[step.neighbor]}`); await sleep(speed); }
+            else if (step.op === 'negative_cycle') { set({ graphHighlightEdges: [step.edgeId] }); get().addLog(`WARNING: Negative weight cycle detected!`); await sleep(speed); }
+            else if (step.op === 'done') { set({ graphHighlightEdges: [], graphHighlightNodes: [] }); }
+        }
+        get().addLog(`Bellman-Ford complete.`);
     },
 }))
 

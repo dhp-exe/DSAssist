@@ -279,4 +279,49 @@ export class GraphAlgorithms {
         }
         return steps;
     }
+
+    static bellmanFord(nodes, edges, startNodeId, isDirected) {
+        const steps = [];
+        const distances = {};
+        nodes.forEach(n => distances[n.id] = Infinity);
+        distances[startNodeId] = 0;
+
+        const allEdges = [];
+        edges.forEach(e => {
+            const weight = parseFloat(e.weight);
+            if (!isNaN(weight)) {
+                allEdges.push({ u: e.source, v: e.target, weight, id: e.id });
+                if (!isDirected) {
+                    allEdges.push({ u: e.target, v: e.source, weight, id: e.id });
+                }
+            }
+        });
+
+        steps.push({ op: 'init', distances: { ...distances }, iteration: 0 });
+
+        // Relax edges |V| - 1 times
+        for (let i = 1; i <= nodes.length - 1; i++) {
+            steps.push({ op: 'iteration', iteration: i, distances: { ...distances } });
+            for (let edge of allEdges) {
+                steps.push({ op: 'check_edge', curr: edge.u, neighbor: edge.v, edgeId: edge.id, distances: { ...distances }, iteration: i });
+                if (distances[edge.u] !== Infinity && distances[edge.u] + edge.weight < distances[edge.v]) {
+                    distances[edge.v] = distances[edge.u] + edge.weight;
+                    steps.push({ op: 'update_dist', curr: edge.u, neighbor: edge.v, edgeId: edge.id, distances: { ...distances }, iteration: i });
+                }
+            }
+        }
+
+        // Check for negative weight cycle
+        let hasNegativeCycle = false;
+        for (let edge of allEdges) {
+            if (distances[edge.u] !== Infinity && distances[edge.u] + edge.weight < distances[edge.v]) {
+                hasNegativeCycle = true;
+                steps.push({ op: 'negative_cycle', edgeId: edge.id });
+                break;
+            }
+        }
+
+        steps.push({ op: 'done', distances: { ...distances }, hasNegativeCycle });
+        return steps;
+    }
 }

@@ -24,6 +24,7 @@ export default function GraphVisualizer() {
     const rawPQ = useStore(s => s.graphPQ)
     const rawDistances = useStore(s => s.graphDistances)
     const rawInDegrees = useStore(s => s.graphInDegrees)
+    const rawIteration = useStore(s => s.graphIteration)
     const rawVis = useStore(s => s.graphVisited)
     const rawTrav = useStore(s => s.graphTraversal)
     const rawMST = useStore(s => s.graphMSTEdges)     
@@ -37,14 +38,14 @@ export default function GraphVisualizer() {
         cache.current = { 
             isDirected: rawIsDirected, isWeighted: rawIsWeighted, rep: rawRep, 
             nodes: rawNodes, edges: rawEdges, sel: rawSelected, graphMode: rawMode, graphEdgeSource: rawEdgeSource, graphSelectedEdge: rawSelectedEdge, showGraphGuide: rawShowGuide,
-            graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, inDegrees: rawInDegrees, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
+            graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, inDegrees: rawInDegrees, iteration: rawIteration, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
         }
     }
 
     const c = isGeneratingFrames ? cache.current : {
         isDirected: rawIsDirected, isWeighted: rawIsWeighted, rep: rawRep, 
         nodes: rawNodes, edges: rawEdges, sel: rawSelected, graphMode: rawMode, graphEdgeSource: rawEdgeSource, graphSelectedEdge: rawSelectedEdge, showGraphGuide: rawShowGuide,
-        graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, inDegrees: rawInDegrees, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
+        graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, inDegrees: rawInDegrees, iteration: rawIteration, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
     };
 
     // Actions
@@ -433,6 +434,27 @@ export default function GraphVisualizer() {
                             </div>
                         </div>
                     )}
+                    {c.graphAlgorithm === 'BellmanFord' && (
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Iteration:</span>
+                                <div className="flex gap-2 flex-wrap min-h-[32px] items-center text-sm font-bold text-indigo-700">
+                                    {c.iteration > 0 ? `${c.iteration} / ${c.nodes.length - 1}` : 'Init'}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Distances:</span>
+                                <div className="flex gap-2 flex-wrap min-h-[32px]">
+                                    {Object.entries(c.distances || {}).map(([id, dist]) => (
+                                        <div key={id} className="px-2 py-1 border bg-slate-50 border-slate-200 flex items-center justify-center rounded text-slate-600 text-sm">
+                                            <span className="font-bold mr-1">{id}:</span>
+                                            <span className="font-mono">{dist === Infinity ? '∞' : dist}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Visited Array */}
                     {(c.graphAlgorithm === 'BFS' || c.graphAlgorithm === 'DFS' || c.graphAlgorithm === 'Dijkstra' || 
@@ -465,7 +487,7 @@ export default function GraphVisualizer() {
                             </div>
                         </div>
                     )}
-
+                    
                 </div>
             )}
         </div>

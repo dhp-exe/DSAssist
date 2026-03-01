@@ -13,7 +13,7 @@ export default function ControlPanel() {
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
     hashMode, setHashMode, hashProbingMode, setHashProbingMode, hashInsert, hashDelete,
     isDirected, setIsDirected, isWeighted, setIsWeighted, graphRepresentation, setGraphRepresentation, 
-    graphBFS, graphDFS, graphDijkstra, graphPrim, graphKruskal, graphTopoSort, // NEW
+    graphBFS, graphDFS, graphDijkstra, graphBellmanFord, graphPrim, graphKruskal, graphTopoSort,
     selectedStructure, implementationMode, setImplementationMode, data, isAnimating,
     graphEdges, graphNodes
   } = useStore()
@@ -244,7 +244,6 @@ export default function ControlPanel() {
 
             {isGraph && (
                 <>
-                    <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Traversals</div>
                     <input 
                         type="text" 
                         placeholder="Start Node (e.g. A)" 
@@ -257,32 +256,28 @@ export default function ControlPanel() {
                         disabled={isAnimating} 
                         maxLength={4}
                     />
-                    <div className="grid grid-cols-3 gap-2">
-                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphBFS(graphStartNode)}>BFS</button>
-                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-purple-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDFS(graphStartNode)}>DFS</button>
-                        <button disabled={isAnimating || !graphStartNode || !isWeighted || negativeExists} title={negativeExists ? "Negative edge exists" : undefined} className="py-1 bg-blue-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDijkstra(graphStartNode)}>Dijkstra</button>
-                        <button disabled={isAnimating || !isDAG} title={!isDirected ? "Requires Directed Graph" : !isDAG ? "Graph contains cycles" : undefined} className="py-1 bg-orange-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphTopoSort()}>Topo Sort</button>
 
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-2 mb-2">Traversal</div>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-purple-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphBFS(graphStartNode)}>BFS</button>
+                        <button disabled={isAnimating || !graphStartNode} className="py-1 bg-purple-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDFS(graphStartNode)}>DFS</button>
+                    </div>
+
+                    <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Shortest Path</div>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                        <button disabled={isAnimating || !graphStartNode || !isWeighted || negativeExists} title={negativeExists ? "Negative edge exists" : !isWeighted ? "Requires Weighted Graph" : undefined} className="py-1 bg-cyan-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDijkstra(graphStartNode)}>Dijkstra</button>
+                        <button disabled={isAnimating || !graphStartNode || !isWeighted} title={!isWeighted ? "Requires Weighted Graph" : undefined} className="py-1 bg-cyan-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphBellmanFord(graphStartNode)}>Bellman-Ford</button>
+                    </div>
+
+                    <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Graph Ordering</div>
+                    <div className="grid grid-cols-1 gap-2 mb-3">
+                        <button disabled={isAnimating || !isDAG} title={!isDirected ? "Requires Directed Graph" : !isDAG ? "Graph contains cycles" : undefined} className="py-1 bg-orange-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphTopoSort()}>Topo Sort</button>
                     </div>
                     
-                    <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Minimum Spanning Tree</div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Minimum Spanning Tree</div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button 
-                            disabled={isAnimating || !graphStartNode || !isWeighted || isDirected} 
-                            title={isDirected ? "Requires Undirected Graph" : !isWeighted ? "Requires Weighted Graph" : undefined}
-                            className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" 
-                            onClick={() => graphPrim(graphStartNode)}
-                        >
-                            Prim's
-                        </button>
-                        <button 
-                            disabled={isAnimating || !isWeighted || isDirected} 
-                            title={isDirected ? "Requires Undirected Graph" : !isWeighted ? "Requires Weighted Graph" : undefined}
-                            className="py-1 bg-emerald-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" 
-                            onClick={() => graphKruskal()}
-                        >
-                            Kruskal's
-                        </button>
+                        <button disabled={isAnimating || !graphStartNode || !isWeighted || isDirected} title={isDirected ? "Requires Undirected Graph" : !isWeighted ? "Requires Weighted Graph" : undefined} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphPrim(graphStartNode)}>Prim's</button>
+                        <button disabled={isAnimating || !isWeighted || isDirected} title={isDirected ? "Requires Undirected Graph" : !isWeighted ? "Requires Weighted Graph" : undefined} className="py-1 bg-emerald-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphKruskal()}>Kruskal's</button>
                     </div>
 
                     <div className="text-xs text-slate-500 mt-4 bg-slate-50 p-2.5 rounded border border-slate-200">

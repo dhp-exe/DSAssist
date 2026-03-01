@@ -15,10 +15,7 @@ const OPTIONS = [
   'Heaps',
   'Hash',
   'Graphs',
-  'Algorithm - Binary Search',
-  'Algorithms - Sorting',
-  'Algorithms - Topological sort',
-  
+  'Sorting Algorithms',
 ]
 
 export default function TopMenu() {
