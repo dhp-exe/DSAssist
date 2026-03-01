@@ -211,4 +211,72 @@ export class GraphAlgorithms {
         }
         return steps;
     }
+
+    static isDAG(nodes, edges) {
+        const adj = this.getAdjacencyList(nodes, edges, true);
+        const visited = new Set();
+        const recStack = new Set();
+
+        for (let node of nodes) {
+            if (this._isCyclic(node.id, adj, visited, recStack)) return false;
+        }
+        return true;
+    }
+
+    static _isCyclic(curr, adj, visited, recStack) {
+        if (recStack.has(curr)) return true;
+        if (visited.has(curr)) return false;
+
+        visited.add(curr);
+        recStack.add(curr);
+
+        for (let nbr of (adj[curr] || [])) {
+            if (this._isCyclic(nbr.target, adj, visited, recStack)) return true;
+        }
+        recStack.delete(curr);
+        return false;
+    }
+
+    static topologicalSort(nodes, edges) {
+        const steps = [];
+        const adj = this.getAdjacencyList(nodes, edges, true);
+        const inDegree = {};
+        nodes.forEach(n => inDegree[n.id] = 0);
+
+        edges.forEach(e => {
+            inDegree[e.target] = (inDegree[e.target] || 0) + 1;
+        });
+
+        const queue = [];
+        const traversal = [];
+        const visited = new Set();
+
+        nodes.forEach(n => {
+            if (inDegree[n.id] === 0) queue.push(n.id);
+        });
+
+        steps.push({ op: 'init', queue: [...queue], inDegree: { ...inDegree }, traversal: [...traversal], visited: Array.from(visited) });
+
+        while (queue.length > 0) {
+            const u = queue.shift();
+            traversal.push(u);
+            visited.add(u);
+            steps.push({ op: 'visit', curr: u, queue: [...queue], inDegree: { ...inDegree }, traversal: [...traversal], visited: Array.from(visited) });
+
+            for (let nbr of adj[u]) {
+                const v = nbr.target;
+                steps.push({ op: 'check_edge', curr: u, neighbor: v, queue: [...queue], inDegree: { ...inDegree }, traversal: [...traversal], visited: Array.from(visited) });
+
+                inDegree[v]--;
+                steps.push({ op: 'update_indegree', curr: u, neighbor: v, queue: [...queue], inDegree: { ...inDegree }, traversal: [...traversal], visited: Array.from(visited) });
+
+                if (inDegree[v] === 0) {
+                    queue.push(v);
+                    steps.push({ op: 'enqueue', curr: u, neighbor: v, queue: [...queue], inDegree: { ...inDegree }, traversal: [...traversal], visited: Array.from(visited) });
+                }
+            }
+            steps.push({ op: 'done_node', curr: u, queue: [...queue], inDegree: { ...inDegree }, traversal: [...traversal], visited: Array.from(visited) });
+        }
+        return steps;
+    }
 }

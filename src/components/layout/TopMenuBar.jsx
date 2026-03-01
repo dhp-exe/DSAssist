@@ -16,10 +16,9 @@ const OPTIONS = [
   'Hash',
   'Graphs',
   'Algorithm - Binary Search',
-  'Algorithms - DFS',
-  'Algorithms - BFS',
   'Algorithms - Sorting',
-  "Algorithms - Dijkstra"
+  'Algorithms - Topological sort',
+  
 ]
 
 export default function TopMenu() {

@@ -23,6 +23,7 @@ export default function GraphVisualizer() {
     const rawS = useStore(s => s.graphStack)
     const rawPQ = useStore(s => s.graphPQ)
     const rawDistances = useStore(s => s.graphDistances)
+    const rawInDegrees = useStore(s => s.graphInDegrees)
     const rawVis = useStore(s => s.graphVisited)
     const rawTrav = useStore(s => s.graphTraversal)
     const rawMST = useStore(s => s.graphMSTEdges)     
@@ -36,14 +37,14 @@ export default function GraphVisualizer() {
         cache.current = { 
             isDirected: rawIsDirected, isWeighted: rawIsWeighted, rep: rawRep, 
             nodes: rawNodes, edges: rawEdges, sel: rawSelected, graphMode: rawMode, graphEdgeSource: rawEdgeSource, graphSelectedEdge: rawSelectedEdge, showGraphGuide: rawShowGuide,
-            graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
+            graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, inDegrees: rawInDegrees, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
         }
     }
 
     const c = isGeneratingFrames ? cache.current : {
         isDirected: rawIsDirected, isWeighted: rawIsWeighted, rep: rawRep, 
         nodes: rawNodes, edges: rawEdges, sel: rawSelected, graphMode: rawMode, graphEdgeSource: rawEdgeSource, graphSelectedEdge: rawSelectedEdge, showGraphGuide: rawShowGuide,
-        graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
+        graphAlgorithm: rawAlgorithm, q: rawQ, s: rawS, pq: rawPQ, distances: rawDistances, inDegrees: rawInDegrees, vis: rawVis, trav: rawTrav, mst: rawMST, ds: rawDS, hn: rawHN, he: rawHE, hbe: rawHBE
     };
 
     // Actions
@@ -339,7 +340,8 @@ export default function GraphVisualizer() {
             {(c.graphAlgorithm) && (
                 <div className="bg-white border-t p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex flex-col gap-3 z-20 overflow-auto max-h-48">
                     
-                    {c.graphAlgorithm === 'BFS' && (
+                    {/* Queue */}
+                    {(c.graphAlgorithm === 'BFS' || c.graphAlgorithm === 'TopoSort') && (
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Queue:</span>
                             <div className="flex gap-2 flex-wrap min-h-[32px]">
@@ -350,7 +352,7 @@ export default function GraphVisualizer() {
                             </div>
                         </div>
                     )}
-
+                    {/* Stack */}
                     {c.graphAlgorithm === 'DFS' && (
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Stack:</span>
@@ -418,7 +420,23 @@ export default function GraphVisualizer() {
                         </div>
                     )}
 
-                    {(c.graphAlgorithm === 'BFS' || c.graphAlgorithm === 'DFS' || c.graphAlgorithm === 'Dijkstra' || c.graphAlgorithm === 'Prim' || c.graphAlgorithm === 'Kruskal') && (
+                    {c.graphAlgorithm === 'TopoSort' && (
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">In-Degrees:</span>
+                            <div className="flex gap-2 flex-wrap min-h-[32px]">
+                                {Object.entries(c.inDegrees || {}).map(([id, deg]) => (
+                                    <div key={id} className="px-2 py-1 border bg-slate-50 border-slate-200 flex items-center justify-center rounded text-slate-600 text-sm">
+                                        <span className="font-bold mr-1">{id}:</span>
+                                        <span className="font-mono">{deg}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Visited Array */}
+                    {(c.graphAlgorithm === 'BFS' || c.graphAlgorithm === 'DFS' || c.graphAlgorithm === 'Dijkstra' || 
+                    c.graphAlgorithm === 'Prim' || c.graphAlgorithm === 'Kruskal' || c.graphAlgorithm === 'TopoSort') && (
                         <div className="flex items-center gap-3">
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Visited:</span>
                             <div className="flex gap-2 flex-wrap min-h-[32px]">
@@ -428,8 +446,9 @@ export default function GraphVisualizer() {
                             </div>
                         </div>
                     )}
-                    
-                    {(c.graphAlgorithm === 'BFS' || c.graphAlgorithm === 'DFS' || c.graphAlgorithm === 'Dijkstra') && (
+
+                    {/* Order display */}
+                    {(c.graphAlgorithm === 'BFS' || c.graphAlgorithm === 'DFS' || c.graphAlgorithm === 'Dijkstra' || c.graphAlgorithm === 'TopoSort') && (
                         <div className="flex items-center gap-3 mt-1 pt-3 border-t min-h-[40px]">
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Order:</span>
                             <div className="flex gap-2 text-slate-700 font-bold tracking-widest flex-wrap">
@@ -437,7 +456,7 @@ export default function GraphVisualizer() {
                             </div>
                         </div>
                     )}
-
+                    {/* MST Weight */}
                     {(c.graphAlgorithm === 'Prim' || c.graphAlgorithm === 'Kruskal') && (
                         <div className="flex items-center gap-3 mt-1 pt-3 border-t min-h-[40px]">
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">MST Weight:</span>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useStore } from '../../store/useStore'
+import { GraphAlgorithms } from '../../algorithms/graphs'
 
 export default function ControlPanel() {
   const [value, setValue] = useState('')
@@ -12,16 +13,17 @@ export default function ControlPanel() {
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
     hashMode, setHashMode, hashProbingMode, setHashProbingMode, hashInsert, hashDelete,
     isDirected, setIsDirected, isWeighted, setIsWeighted, graphRepresentation, setGraphRepresentation, 
-    graphBFS, graphDFS, graphDijkstra, graphPrim, graphKruskal,
+    graphBFS, graphDFS, graphDijkstra, graphPrim, graphKruskal, graphTopoSort, // NEW
     selectedStructure, implementationMode, setImplementationMode, data, isAnimating,
-    graphEdges
+    graphEdges, graphNodes
   } = useStore()
 
   const negativeExists = isWeighted && graphEdges.some(e => {
     const w = parseFloat(e.weight);
     return !isNaN(w) && w < 0;
   });
-
+  const isDAG = isDirected && GraphAlgorithms.isDAG(graphNodes, graphEdges);
+  
   const isList = selectedStructure.includes('Linked List')
   const isArray = selectedStructure === 'ArrayList'
   const isStack = selectedStructure === 'Stack'
@@ -242,7 +244,7 @@ export default function ControlPanel() {
 
             {isGraph && (
                 <>
-                    <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Algorithms</div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Traversals</div>
                     <input 
                         type="text" 
                         placeholder="Start Node (e.g. A)" 
@@ -259,9 +261,11 @@ export default function ControlPanel() {
                         <button disabled={isAnimating || !graphStartNode} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphBFS(graphStartNode)}>BFS</button>
                         <button disabled={isAnimating || !graphStartNode} className="py-1 bg-purple-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDFS(graphStartNode)}>DFS</button>
                         <button disabled={isAnimating || !graphStartNode || !isWeighted || negativeExists} title={negativeExists ? "Negative edge exists" : undefined} className="py-1 bg-blue-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphDijkstra(graphStartNode)}>Dijkstra</button>
+                        <button disabled={isAnimating || !isDAG} title={!isDirected ? "Requires Directed Graph" : !isDAG ? "Graph contains cycles" : undefined} className="py-1 bg-orange-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => graphTopoSort()}>Topo Sort</button>
+
                     </div>
                     
-                    <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Min Spanning Tree</div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Minimum Spanning Tree</div>
                     <div className="grid grid-cols-2 gap-2">
                         <button 
                             disabled={isAnimating || !graphStartNode || !isWeighted || isDirected} 
