@@ -3,6 +3,7 @@ import { BST, AVLTree, SplayTree, RedBlackTree, BTree } from '../algorithms/tree
 import { Heap } from '../algorithms/heaps'
 import { Hash } from '../algorithms/hash'
 import { GraphAlgorithms } from '../algorithms/graphs'
+import { SearchAlgorithms } from '../algorithms/search'
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 
@@ -39,7 +40,7 @@ const sleep = async (ms) => {
 let nextId = 0;
 
 export const useStore = create((set, get) => ({
-    selectedStructure: 'Singly Linked List',
+    selectedStructure: 'ArrayList',
     implementationMode: 'Array', 
     heapMode: 'Min', 
     bTreeDegree: 3,
@@ -83,11 +84,15 @@ export const useStore = create((set, get) => ({
     nodes: [], 
     treeActions: [],
     
-    // Highlights
+    // Highlights & Search
     highlightIndex: -1,
     highlightNodeValue: null,
     highlightIndices: [],
     highlightType: '',
+    searchLeft: null,
+    searchRight: null,
+    searchMid: null,
+    searchResult: null,
 
     // Playback & Animation Engine
     frames: [],
@@ -117,7 +122,9 @@ export const useStore = create((set, get) => ({
             graphHighlightNodes: [...state.graphHighlightNodes], graphHighlightEdges: [...state.graphHighlightEdges], graphHighlightBackEdges: JSON.parse(JSON.stringify(state.graphHighlightBackEdges)),
 
             logs: [...state.logs], highlightIndex: state.highlightIndex, highlightNodeValue: state.highlightNodeValue,
-            highlightIndices: [...state.highlightIndices], highlightType: state.highlightType, bTreeDegree: state.bTreeDegree
+            highlightIndices: [...state.highlightIndices], highlightType: state.highlightType, bTreeDegree: state.bTreeDegree,
+            searchLeft: state.searchLeft, searchRight: state.searchRight, searchMid: state.searchMid, searchResult: state.searchResult,
+
         });
     },
 
@@ -138,7 +145,8 @@ export const useStore = create((set, get) => ({
             graphHighlightNodes: frame.graphHighlightNodes, graphHighlightEdges: frame.graphHighlightEdges, graphHighlightBackEdges: frame.graphHighlightBackEdges,
 
             logs: frame.logs, highlightIndex: frame.highlightIndex, highlightNodeValue: frame.highlightNodeValue,
-            highlightIndices: frame.highlightIndices, highlightType: frame.highlightType, bTreeDegree: frame.bTreeDegree
+            highlightIndices: frame.highlightIndices, highlightType: frame.highlightType, bTreeDegree: frame.bTreeDegree,
+            searchLeft: frame.searchLeft, searchRight: frame.searchRight, searchMid: frame.searchMid, searchResult: frame.searchResult,
         });
     },
 
@@ -157,7 +165,8 @@ export const useStore = create((set, get) => ({
             graphMode: get().graphMode, graphSelectedNode: null, graphSelectedEdge: null, graphEdgeSource: null, showGraphGuide: false,
             
             graphAlgorithm: get().graphAlgorithm, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphInDegrees: {}, graphIteration: 0,
-            graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: []
+            graphVisited: [], graphTraversal: [], graphMSTEdges: [], graphDisjointSets: {}, graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [],
+            searchLeft: null, searchRight: null, searchMid: null, searchResult: null
         };
 
         frames = []; get()._recordFrame(); 
@@ -208,7 +217,7 @@ export const useStore = create((set, get) => ({
     clearData: () => {
         set({
             data: [], nodes: [], treeActions: [], hashTable: getEmptyHashTable(get().hashMode), logs: [],
-            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '', searchLeft: null, searchRight: null, searchMid: null, searchResult: null,
             graphAlgorithm: null, graphQueue: [], graphStack: [], graphPQ: [], graphDistances: {}, graphInDegrees: {}, graphIteration: 0, graphVisited: [], graphTraversal: [], 
             graphMSTEdges: [], graphDisjointSets: {}, graphHighlightNodes: [], graphHighlightEdges: [], graphHighlightBackEdges: [],
             graphNodes: [], graphEdges: [], graphSelectedNode: null, graphSelectedEdge: null, graphEdgeSource: null, showGraphGuide: false,
@@ -222,16 +231,17 @@ export const useStore = create((set, get) => ({
         set({ 
             bTreeDegree: degree, data: [], nodes: [], treeActions: [],
             highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            searchLeft: null, searchRight: null, searchMid: null, searchResult: null,
             frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null 
         });
         get().addLog(`B-Tree degree set to ${degree}. Data cleared.`);
     },
     setHeapMode: (mode) => {
-        set({ heapMode: mode, data: [], highlightIndices: [], frames: [], playing: false, isAnimating: false });
+        set({ heapMode: mode, data: [], highlightIndices: [], searchLeft: null, searchRight: null, searchMid: null, searchResult: null, frames: [], playing: false, isAnimating: false });
         get().addLog(`Switched Heap mode to ${mode}-Heap. Array cleared.`);
     },
     setImplementationMode: (mode) => {
-        set({ implementationMode: mode, highlightIndex: -1, frames: [], playing: false, isAnimating: false });
+        set({ implementationMode: mode, highlightIndex: -1, frames: [], searchLeft: null, searchRight: null, searchMid: null, searchResult: null, playing: false, isAnimating: false });
         get().addLog(`Switched implementation to ${mode}`);
     },
     setHashMode: (mode) => {
@@ -254,7 +264,8 @@ export const useStore = create((set, get) => ({
         const updates = { 
             selectedStructure: s, implementationMode: 'Array', data: [], nodes: [], treeActions: [],
             hashTable: getEmptyHashTable('Open Addressing'), hashMode: 'Open Addressing', hashProbingMode: 'Linear',
-            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '',
+            highlightIndex: -1, highlightNodeValue: null, highlightIndices: [], highlightType: '', 
+            searchLeft: null, searchRight: null, searchMid: null, searchResult: null,
             frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null 
         };
 
@@ -292,10 +303,8 @@ export const useStore = create((set, get) => ({
         }
 
         set({ 
-            data: arr,
-            nodes: arr.map(v => ({ id: nextId++, value: v })),
-            treeActions: arr.map(v => ({ op: 'insert', val: v })),
-            hashTable: newHashTable,
+            data: arr, nodes: arr.map(v => ({ id: nextId++, value: v })), treeActions: arr.map(v => ({ op: 'insert', val: v })),
+            hashTable: newHashTable, searchLeft: null, searchRight: null, searchMid: null, searchResult: null, highlightIndex: -1,
             frames: [], currentFrame: 0, playing: false, isAnimating: false, latestOperation: null
         });
         get().addLog(`Randomized with ${n} items`);
@@ -304,7 +313,8 @@ export const useStore = create((set, get) => ({
     addItem: (value) => {
         set((state) => ({ 
             data: [...state.data, value], nodes: [...state.nodes, { id: nextId++, value }],
-            treeActions: [...state.treeActions, { op: 'insert', val: value }]
+            treeActions: [...state.treeActions, { op: 'insert', val: value }],
+            searchLeft: null, searchRight: null, searchMid: null, searchResult: null, highlightIndex: -1
         }))
         get().addLog(`Added ${value}`)
     },
@@ -315,7 +325,7 @@ export const useStore = create((set, get) => ({
             const newData = [...state.data]; const newNodes = [...state.nodes];
             newData.splice(index, 1); newNodes.splice(index, 1);
             get().addLog(`Deleted ${value}`);
-            return { data: newData, nodes: newNodes, treeActions: [...state.treeActions, { op: 'delete', val: value }] }
+            return { data: newData, nodes: newNodes, treeActions: [...state.treeActions, { op: 'delete', val: value }], searchLeft: null, searchRight: null, searchMid: null, searchResult: null, highlightIndex: -1 }
         })
     },
 
@@ -324,14 +334,22 @@ export const useStore = create((set, get) => ({
     deleteByValue: (value) => get()._runWithFrames(get()._deleteByValue, 'deleteByValue', [value]),
     deleteAtIndex: (index) => get()._runWithFrames(get()._deleteAtIndex, 'deleteAtIndex', [index]),
     updateAtIndex: (index, value) => get()._runWithFrames(get()._updateAtIndex, 'updateAtIndex', [index, value]),
+
+    arrayBinarySearch: (value) => get()._runWithFrames(get()._arrayBinarySearch, 'arrayBinarySearch', [value]),
+    arrayLowerBound: (value) => get()._runWithFrames(get()._arrayLowerBound, 'arrayLowerBound', [value]),
+    arrayUpperBound: (value) => get()._runWithFrames(get()._arrayUpperBound, 'arrayUpperBound', [value]),
+
     treeInsert: (value) => get()._runWithFrames(get()._treeInsert, 'treeInsert', [value]),
     treeFind: (value) => get()._runWithFrames(get()._treeFind, 'treeFind', [value]),
     treeDelete: (value) => get()._runWithFrames(get()._treeDelete, 'treeDelete', [value]),
+
     heapBuild: () => get()._runWithFrames(get()._heapBuild, 'heapBuild', []),
     heapInsert: (value) => get()._runWithFrames(get()._heapInsert, 'heapInsert', [value]),
     heapPop: () => get()._runWithFrames(get()._heapPop, 'heapPop', []),
+
     hashInsert: (value) => get()._runWithFrames(get()._hashInsert, 'hashInsert', [value]),
     hashDelete: (value) => get()._runWithFrames(get()._hashDelete, 'hashDelete', [value]),
+
     graphBFS: (startNodeId) => get()._runWithFrames(get()._graphBFS, 'graphBFS', [startNodeId]),
     graphDFS: (startNodeId) => get()._runWithFrames(get()._graphDFS, 'graphDFS', [startNodeId]),
     graphDijkstra: (startNodeId) => get()._runWithFrames(get()._graphDijkstra, 'graphDijkstra', [startNodeId]),
@@ -342,6 +360,7 @@ export const useStore = create((set, get) => ({
 
     // --- INTERNAL ACTION LOGIC ---
     _addAtIndex: async (index, value) => {
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null });
         const { selectedStructure, implementationMode, speedMs, data, nodes } = get();
         const isStack = selectedStructure === 'Stack';
         const isQueue = selectedStructure === 'Queue';
@@ -433,6 +452,7 @@ export const useStore = create((set, get) => ({
     },
 
     _deleteByValue: async (value) => {
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null });
         const { data, speedMs, _deleteAtIndex } = get();
         if (data.length === 0) return;
 
@@ -459,6 +479,7 @@ export const useStore = create((set, get) => ({
     },
 
     _deleteAtIndex: async (index) => {
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null });
         const { data, selectedStructure, implementationMode, speedMs } = get();
         if (index < 0 || index >= data.length) return;
 
@@ -537,6 +558,7 @@ export const useStore = create((set, get) => ({
     },
 
     _updateAtIndex: async (index, value) => {
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null });
         const { data, speedMs } = get();
         if (index < 0 || index >= data.length) return;
 
@@ -556,7 +578,110 @@ export const useStore = create((set, get) => ({
         await sleep(speedMs);
         set({ highlightIndex: -1 });
     },
+    _ensureSorted: async () => {
+        const state = get();
+        const isAlreadySorted = state.data.every((val, i, arr) => !i || (val >= arr[i - 1]));
+        if (!isAlreadySorted) {
+            get().addLog("Sorting array automatically for binary search...");
+            const sortedPairs = state.data.map((val, idx) => ({val, id: state.nodes[idx].id})).sort((a,b)=>a.val - b.val);
+            set({
+                data: sortedPairs.map(p => p.val),
+                nodes: sortedPairs.map(p => ({ id: p.id, value: p.val }))
+            });
+            await sleep(get().speedMs);
+        }
+    },
 
+    _arrayBinarySearch: async (value) => {
+        await get()._ensureSorted();
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null, highlightIndex: -1 });
+        const speed = get().speedMs;
+        const data = get().data;
+        if (data.length === 0) return;
+
+        get().addLog(`Starting Binary Search for ${value}...`);
+        const steps = SearchAlgorithms.binarySearch(data, value);
+
+        for (let step of steps) {
+            if (step.op === 'init' || step.op === 'update_bounds') {
+                set({ searchLeft: step.left, searchRight: step.right, searchMid: null, highlightIndex: -1 });
+                await sleep(speed);
+            } else if (step.op === 'mid') {
+                set({ searchMid: step.mid });
+                await sleep(speed);
+            } else if (step.op === 'check') {
+                set({ highlightIndex: step.mid });
+                get().addLog(`Checking if ${step.val} === ${value}`);
+                await sleep(speed);
+            } else if (step.op === 'found') {
+                set({ searchResult: step.index, highlightIndex: step.index });
+                get().addLog(`Found ${value} at index ${step.index}!`);
+                await sleep(speed);
+            } else if (step.op === 'not_found') {
+                set({ searchResult: -1, highlightIndex: -1 });
+                get().addLog(`Value ${value} not found.`);
+                await sleep(speed);
+            }
+        }
+    },
+
+    _arrayLowerBound: async (value) => {
+        await get()._ensureSorted();
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null, highlightIndex: -1 });
+        const speed = get().speedMs;
+        const data = get().data;
+        if (data.length === 0) return;
+
+        get().addLog(`Starting Lower Bound search for ${value}...`);
+        const steps = SearchAlgorithms.lowerBound(data, value);
+
+        for (let step of steps) {
+            if (step.op === 'init' || step.op === 'update_bounds') {
+                set({ searchLeft: step.left, searchRight: step.right, searchMid: null, highlightIndex: -1 });
+                await sleep(speed);
+            } else if (step.op === 'mid') {
+                set({ searchMid: step.mid });
+                await sleep(speed);
+            } else if (step.op === 'check') {
+                set({ highlightIndex: step.mid });
+                get().addLog(`Checking if ${step.val} < ${value}`);
+                await sleep(speed);
+            } else if (step.op === 'found') {
+                set({ searchResult: step.index, highlightIndex: step.index });
+                get().addLog(`Lower Bound for ${value} is at index ${step.index}`);
+                await sleep(speed);
+            }
+        }
+    },
+
+    _arrayUpperBound: async (value) => {
+        await get()._ensureSorted();
+        set({ searchLeft: null, searchRight: null, searchMid: null, searchResult: null, highlightIndex: -1 });
+        const speed = get().speedMs;
+        const data = get().data;
+        if (data.length === 0) return;
+
+        get().addLog(`Starting Upper Bound search for ${value}...`);
+        const steps = SearchAlgorithms.upperBound(data, value);
+
+        for (let step of steps) {
+            if (step.op === 'init' || step.op === 'update_bounds') {
+                set({ searchLeft: step.left, searchRight: step.right, searchMid: null, highlightIndex: -1 });
+                await sleep(speed);
+            } else if (step.op === 'mid') {
+                set({ searchMid: step.mid });
+                await sleep(speed);
+            } else if (step.op === 'check') {
+                set({ highlightIndex: step.mid });
+                get().addLog(`Checking if ${step.val} <= ${value}`);
+                await sleep(speed);
+            } else if (step.op === 'found') {
+                set({ searchResult: step.index, highlightIndex: step.index });
+                get().addLog(`Upper Bound for ${value} is at index ${step.index}`);
+                await sleep(speed);
+            }
+        }
+    },
     // ==========================================
     // TREE
     // ==========================================

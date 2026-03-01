@@ -8,7 +8,8 @@ export default function ControlPanel() {
   const [graphStartNode, setGraphStartNode] = useState('') 
 
   const { 
-    randomize, addAtIndex, deleteAtIndex, deleteByValue, updateAtIndex, addItem, deleteItem, 
+    randomize, addAtIndex, deleteAtIndex, deleteByValue, updateAtIndex, addItem, deleteItem,
+    arrayBinarySearch, arrayLowerBound, arrayUpperBound, 
     treeInsert, treeDelete, treeFind, bTreeDegree, setBTreeDegree,
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
     hashMode, setHashMode, hashProbingMode, setHashProbingMode, hashInsert, hashDelete,
@@ -164,6 +165,15 @@ export default function ControlPanel() {
                     <div className="grid grid-cols-2 gap-2">
                         <button disabled={isAnimating || index===''} className="py-1 bg-rose-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { deleteAtIndex(Number(index)); setIndex(''); }}>Rm by Idx</button>
                         <button disabled={isAnimating || !value} className="py-1 bg-rose-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { deleteByValue(Number(value)); setValue(''); }}>Rm by Val</button>
+                    </div>
+
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Search</div>
+                    <div className="flex flex-col gap-2">
+                        <button disabled={isAnimating || !value} className="w-full py-1 bg-cyan-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayBinarySearch(Number(value)); setValue(''); }}>Binary Search</button>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button disabled={isAnimating || !value} className="py-1 bg-cyan-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayLowerBound(Number(value)); setValue(''); }}>Lower Bound</button>
+                            <button disabled={isAnimating || !value} className="py-1 bg-teal-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayUpperBound(Number(value)); setValue(''); }}>Upper Bound</button>
+                        </div>
                     </div>
                 </>
             )}

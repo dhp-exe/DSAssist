@@ -56,6 +56,11 @@ export default function LinearVisualizer({ type }) {
     const highlight = useStore((s) => s.highlightIndex)
     const impl = useStore((s) => s.implementationMode)
 
+    const searchLeft = useStore(s => s.searchLeft)
+    const searchRight = useStore(s => s.searchRight)
+    const searchMid = useStore(s => s.searchMid)
+    const searchResult = useStore(s => s.searchResult)
+
     if (!nodes || nodes.length === 0) {
         return <div className="h-full flex items-center justify-center text-slate-400">Empty - add elements.</div>
     }
@@ -71,20 +76,47 @@ export default function LinearVisualizer({ type }) {
             <div className="h-full flex items-center justify-center p-6 overflow-auto">
                 <div className="border-4 border-slate-300 bg-slate-100 p-2 rounded-xl flex items-center shadow-inner">
                     <AnimatePresence mode="popLayout">
-                        {nodes.map((node, i) => (
-                            <motion.div
-                                key={node.id}
-                                layout
-                                initial={{ opacity: 0, y: -40, scale: 0.8 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 40, scale: 0.8 }}
-                                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                                className={`relative w-16 h-16 border-r-2 border-slate-300 last:border-r-0 flex flex-col items-center justify-center transition-colors ${highlight === i ? 'bg-indigo-200 shadow-inner' : 'bg-white'}`}
-                            >
-                                <div className={`font-bold text-lg ${highlight === i ? 'text-indigo-800' : 'text-slate-700'}`}>{node.value}</div>
-                                <div className="absolute -bottom-7 text-xs font-mono text-slate-500">{i}</div>
+                        {nodes.map((node, i) => {
+                            const isFound = searchResult === i;
+                            const isHighlight = highlight === i;
+                            let bg = isFound ? 'bg-emerald-200 shadow-inner' : (isHighlight ? 'bg-indigo-200 shadow-inner' : 'bg-white');
+                            let txt = isFound ? 'text-emerald-800' : (isHighlight ? 'text-indigo-800' : 'text-slate-700');
+
+                            let topLabel = [];
+                            if (searchLeft === i) topLabel.push('L');
+                            if (searchRight === i) topLabel.push('R');
+                            let topLabelStr = topLabel.join(', ');
+
+                            return (
+                                <motion.div
+                                    key={node.id}
+                                    layout
+                                    initial={{ opacity: 0, y: -40, scale: 0.8 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 40, scale: 0.8 }}
+                                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                                    className={`relative w-16 h-16 border-r-2 border-slate-300 last:border-r-0 flex flex-col items-center justify-center transition-colors ${bg}`}
+                                >
+                                    <div className={`font-bold text-lg ${txt}`}>{node.value}</div>
+                                    <div className="absolute -bottom-7 text-xs font-mono text-slate-500">{i}</div>
+                                    
+                                    {topLabelStr && <Pointer label={topLabelStr} color={searchLeft === searchRight ? "text-purple-600" : (searchLeft === i ? "text-rose-500" : "text-blue-500")} orientation="vertical" />}
+                                    {searchMid === i && <Pointer label="M" color="text-yellow-500" orientation="vertical" />}
+                                </motion.div>
+                            )
+                        })}
+                        {(searchLeft === nodes.length || searchRight === nodes.length || searchMid === nodes.length || searchResult === nodes.length) && (
+                            <motion.div layout className="relative w-16 h-16 flex flex-col items-center justify-center border-l-2 border-dashed border-slate-300 bg-transparent opacity-50">
+                                <div className="absolute -bottom-7 text-xs font-mono text-slate-500">{nodes.length}</div>
+                                {((searchLeft === nodes.length ? 'L' : '') + (searchLeft === nodes.length && searchRight === nodes.length ? ', ' : '') + (searchRight === nodes.length ? 'R' : '')) && 
+                                    <Pointer label={
+                                        [searchLeft === nodes.length ? 'L' : null, searchRight === nodes.length ? 'R' : null].filter(Boolean).join(', ')
+                                    } color="text-purple-600" orientation="vertical" />
+                                }
+                                {searchMid === nodes.length && <Pointer label="M" color="text-yellow-500" orientation="vertical" />}
+                                {searchResult === nodes.length && <div className="absolute inset-0 bg-emerald-200 opacity-30 shadow-inner"></div>}
                             </motion.div>
-                        ))}
+                        )}
                     </AnimatePresence>
                 </div>
             </div>
