@@ -22,7 +22,7 @@ export default function TopMenu() {
   const setStructure = useStore((s) => s.setStructure)
 
   return (
-    <div className="flex items-center gap-4 p-3 bg-slate-50 border-b">
+    <div className="flex items-center gap-4 p-3 bg-slate-50 border-b ml-4">
       <div className="font-semibold">DSAssist</div>
       <select
         value={selectedStructure}
