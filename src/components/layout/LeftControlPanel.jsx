@@ -10,6 +10,7 @@ export default function ControlPanel() {
   const { 
     randomize, addAtIndex, deleteAtIndex, deleteByValue, updateAtIndex, addItem, deleteItem,
     arrayBinarySearch, arrayLowerBound, arrayUpperBound, 
+    arrayInsertionSort, arrayShellSort, arraySelectionSort, arrayBubbleSort, arrayQuickSort, arrayMergeSort,
     treeInsert, treeDelete, treeFind, bTreeDegree, setBTreeDegree,
     heapMode, setHeapMode, heapInsert, heapPop, heapBuild,
     hashMode, setHashMode, hashProbingMode, setHashProbingMode, hashInsert, hashDelete,
@@ -159,8 +160,8 @@ export default function ControlPanel() {
                 <>
                     <div className="text-xs font-semibold text-slate-500 uppercase mt-2">Array Operations</div>
                     <div className="grid grid-cols-2 gap-2">
-                        <button disabled={isAnimating || !value || index===''} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { addAtIndex(Number(index), Number(value)); setValue(''); setIndex(''); }}>Add at Idx</button>
-                        <button disabled={isAnimating || !value || index===''} className="py-1 bg-blue-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { updateAtIndex(Number(index), Number(value)); setValue(''); setIndex(''); }}>Update at Idx</button>
+                        <button disabled={isAnimating || !value || index===''} className="py-1 bg-green-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { addAtIndex(Number(index), Number(value)); setValue(''); setIndex(''); }}>Add at Idx</button>
+                        <button disabled={isAnimating || !value || index===''} className="py-1 bg-emerald-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { updateAtIndex(Number(index), Number(value)); setValue(''); setIndex(''); }}>Update at Idx</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <button disabled={isAnimating || index===''} className="py-1 bg-rose-500 text-white text-sm rounded disabled:opacity-50" onClick={() => { deleteAtIndex(Number(index)); setIndex(''); }}>Rm by Idx</button>
@@ -169,11 +170,20 @@ export default function ControlPanel() {
 
                     <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Search</div>
                     <div className="flex flex-col gap-2">
-                        <button disabled={isAnimating || !value} className="w-full py-1 bg-cyan-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayBinarySearch(Number(value)); setValue(''); }}>Binary Search</button>
+                        <button disabled={isAnimating || !value} className="w-full py-1 bg-purple-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayBinarySearch(Number(value)); setValue(''); }}>Binary Search</button>
                         <div className="grid grid-cols-2 gap-2">
-                            <button disabled={isAnimating || !value} className="py-1 bg-cyan-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayLowerBound(Number(value)); setValue(''); }}>Lower Bound</button>
-                            <button disabled={isAnimating || !value} className="py-1 bg-teal-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayUpperBound(Number(value)); setValue(''); }}>Upper Bound</button>
+                            <button disabled={isAnimating || !value} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayLowerBound(Number(value)); setValue(''); }}>Lower Bound</button>
+                            <button disabled={isAnimating || !value} className="py-1 bg-indigo-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => { arrayUpperBound(Number(value)); setValue(''); }}>Upper Bound</button>
                         </div>
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500 uppercase mt-4 mb-2">Sorting</div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button disabled={isAnimating || data.length < 2} className="py-1 bg-amber-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => arrayInsertionSort()}>Insertion</button>
+                        <button disabled={isAnimating || data.length < 2} className="py-1 bg-amber-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => arrayShellSort()}>Shell</button>
+                        <button disabled={isAnimating || data.length < 2} className="py-1 bg-orange-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => arraySelectionSort()}>Selection</button>
+                        <button disabled={isAnimating || data.length < 2} className="py-1 bg-orange-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => arrayBubbleSort()}>Bubble</button>
+                        <button disabled={isAnimating || data.length < 2} className="py-1 bg-red-500 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => arrayQuickSort()}>Quick</button>
+                        <button disabled={isAnimating || data.length < 2} className="py-1 bg-red-600 text-white text-sm rounded disabled:opacity-50 font-semibold shadow-sm" onClick={() => arrayMergeSort()}>Merge</button>
                     </div>
                 </>
             )}

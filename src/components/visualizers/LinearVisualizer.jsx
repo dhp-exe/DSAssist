@@ -36,6 +36,22 @@ const Pointer = ({ label, color, orientation = 'vertical' }) => {
         )
     }
     
+    if (orientation === 'vertical-top') {
+        return (
+            <motion.div 
+                initial={{ opacity: 0, y: -15 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -15 }}
+                className={`absolute -top-16 flex flex-col items-center font-bold text-sm ${color} whitespace-nowrap`}
+            >
+                <span>{label}</span>
+                <svg width="18" height="24" viewBox="0 0 24 32" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 rotate-180">
+                    <path d="M12 30V4M5 12l7-7 7 7" />
+                </svg>
+            </motion.div>
+        )
+    }
+
     return (
         <motion.div 
             initial={{ opacity: 0, y: 15 }} 
@@ -54,12 +70,21 @@ const Pointer = ({ label, color, orientation = 'vertical' }) => {
 export default function LinearVisualizer({ type }) {
     const nodes = useStore((s) => s.nodes)
     const highlight = useStore((s) => s.highlightIndex)
+    const highlightIndices = useStore((s) => s.highlightIndices)
     const impl = useStore((s) => s.implementationMode)
 
     const searchLeft = useStore(s => s.searchLeft)
     const searchRight = useStore(s => s.searchRight)
     const searchMid = useStore(s => s.searchMid)
     const searchResult = useStore(s => s.searchResult)
+
+    const sortI = useStore(s => s.sortI)
+    const sortJ = useStore(s => s.sortJ)
+    const sortK = useStore(s => s.sortK)
+    const sortPivot = useStore(s => s.sortPivot)
+    const sortMin = useStore(s => s.sortMin)
+    const sortedIndices = useStore(s => s.sortedIndices)
+    const sortChunks = useStore(s => s.sortChunks)
 
     if (!nodes || nodes.length === 0) {
         return <div className="h-full flex items-center justify-center text-slate-400">Empty - add elements.</div>
@@ -72,46 +97,76 @@ export default function LinearVisualizer({ type }) {
     const isArray = type === 'ArrayList'
 
     if (isArray) {
+        const activeChunks = (sortChunks && sortChunks.length > 0) ? sortChunks : [nodes.map((_, i) => i)];
+
         return (
             <div className="h-full flex items-center justify-center p-6 overflow-auto">
-                <div className="border-4 border-slate-300 bg-slate-100 p-2 rounded-xl flex items-center shadow-inner">
+                <div className="flex flex-wrap justify-center items-center gap-6">
                     <AnimatePresence mode="popLayout">
-                        {nodes.map((node, i) => {
-                            const isFound = searchResult === i;
-                            const isHighlight = highlight === i;
-                            let bg = isFound ? 'bg-emerald-200 shadow-inner' : (isHighlight ? 'bg-indigo-200 shadow-inner' : 'bg-white');
-                            let txt = isFound ? 'text-emerald-800' : (isHighlight ? 'text-indigo-800' : 'text-slate-700');
-
-                            let topLabel = [];
-                            if (searchLeft === i) topLabel.push('L');
-                            if (searchRight === i) topLabel.push('R');
-                            let topLabelStr = topLabel.join(', ');
-
-                            return (
-                                <motion.div
-                                    key={node.id}
-                                    layout
-                                    initial={{ opacity: 0, y: -40, scale: 0.8 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 40, scale: 0.8 }}
-                                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                                    className={`relative w-16 h-16 border-r-2 border-slate-300 last:border-r-0 flex flex-col items-center justify-center transition-colors ${bg}`}
-                                >
-                                    <div className={`font-bold text-lg ${txt}`}>{node.value}</div>
-                                    <div className="absolute -bottom-7 text-xs font-mono text-slate-500">{i}</div>
+                        {activeChunks.map((chunk) => (
+                            <motion.div
+                                key={`chunk-${chunk[0]}-${chunk[chunk.length-1]}`}
+                                layout
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                className="border-4 border-slate-300 bg-slate-100 p-2 rounded-xl flex items-center shadow-inner"
+                            >
+                                {chunk.map((i, innerIdx) => {
+                                    const node = nodes[i];
+                                    if (!node) return null;
                                     
-                                    {topLabelStr && <Pointer label={topLabelStr} color={searchLeft === searchRight ? "text-purple-600" : (searchLeft === i ? "text-rose-500" : "text-blue-500")} orientation="vertical" />}
-                                    {searchMid === i && <Pointer label="M" color="text-yellow-500" orientation="vertical" />}
-                                </motion.div>
-                            )
-                        })}
+                                    const isFound = searchResult === i;
+                                    const isHighlight = highlight === i || (highlightIndices || []).includes(i);
+                                    const isSorted = (sortedIndices || []).includes(i);
+                                    
+                                    let bg = isFound ? 'bg-emerald-200 shadow-inner' : (isHighlight ? 'bg-indigo-200 shadow-inner' : (isSorted ? 'bg-emerald-50' : 'bg-white'));
+                                    let txt = isFound ? 'text-emerald-800' : (isHighlight ? 'text-indigo-800' : 'text-slate-700');
+
+                                    let topLabel = [];
+                                    if (searchLeft === i) topLabel.push('L');
+                                    if (searchRight === i) topLabel.push('R');
+                                    if (sortI === i) topLabel.push('i');
+                                    if (sortJ === i) topLabel.push('j');
+                                    if (sortK === i) topLabel.push('gap/k');
+                                    let topLabelStr = topLabel.join(', ');
+
+                                    let bottomLabel = [];
+                                    if (searchMid === i) bottomLabel.push('M');
+                                    if (sortPivot === i) bottomLabel.push('pivot');
+                                    if (sortMin === i) bottomLabel.push('min');
+                                    let bottomLabelStr = bottomLabel.join(', ');
+
+                                    const isLastInChunk = innerIdx === chunk.length - 1;
+
+                                    return (
+                                        <motion.div
+                                            key={node.id}
+                                            layoutId={`array-node-${node.id}`}
+                                            initial={{ opacity: 0, y: -40, scale: 0.8 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 40, scale: 0.8 }}
+                                            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                                            className={`relative w-16 h-16 border-slate-300 flex flex-col items-center justify-center transition-colors ${bg} ${!isLastInChunk ? 'border-r-2' : ''}`}
+                                        >
+                                            <div className={`font-bold text-lg ${txt}`}>{node.value}</div>
+                                            <div className="absolute -bottom-7 text-xs font-mono text-slate-500">{i}</div>
+                                            
+                                            {topLabelStr && <Pointer label={topLabelStr} color={searchLeft === searchRight ? "text-purple-600" : "text-blue-500"} orientation="vertical-top" />}
+                                            {bottomLabelStr && <Pointer label={bottomLabelStr} color="text-yellow-500" orientation="vertical" />}
+                                        </motion.div>
+                                    )
+                                })}
+                            </motion.div>
+                        ))}
+                        
                         {(searchLeft === nodes.length || searchRight === nodes.length || searchMid === nodes.length || searchResult === nodes.length) && (
-                            <motion.div layout className="relative w-16 h-16 flex flex-col items-center justify-center border-l-2 border-dashed border-slate-300 bg-transparent opacity-50">
+                            <motion.div layout className="relative w-16 h-16 flex flex-col items-center justify-center border-l-2 border-dashed border-slate-300 bg-transparent opacity-50 ml-4">
                                 <div className="absolute -bottom-7 text-xs font-mono text-slate-500">{nodes.length}</div>
                                 {((searchLeft === nodes.length ? 'L' : '') + (searchLeft === nodes.length && searchRight === nodes.length ? ', ' : '') + (searchRight === nodes.length ? 'R' : '')) && 
                                     <Pointer label={
                                         [searchLeft === nodes.length ? 'L' : null, searchRight === nodes.length ? 'R' : null].filter(Boolean).join(', ')
-                                    } color="text-purple-600" orientation="vertical" />
+                                    } color="text-purple-600" orientation="vertical-top" />
                                 }
                                 {searchMid === nodes.length && <Pointer label="M" color="text-yellow-500" orientation="vertical" />}
                                 {searchResult === nodes.length && <div className="absolute inset-0 bg-emerald-200 opacity-30 shadow-inner"></div>}
