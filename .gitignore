@@ -37,12 +37,6 @@ coverage/
 # Ignore local config
 postcss.config.cjs
 
-# Ignore lock files (optional)
-package-lock.json
-yarn.lock
-
-# Ignore output from Vite
-vite.config.js
 
 # Ignore generated files
 *.out
