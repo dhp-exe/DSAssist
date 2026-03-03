@@ -34,8 +34,6 @@ coverage/
 *.log
 *.tmp
 
-# Ignore local config
-postcss.config.cjs
 
 
 # Ignore generated files
