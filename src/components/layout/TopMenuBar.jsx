@@ -15,7 +15,6 @@ const OPTIONS = [
   'Heaps',
   'Hash',
   'Graphs',
-  'Sorting Algorithms',
 ]
 
 export default function TopMenu() {
