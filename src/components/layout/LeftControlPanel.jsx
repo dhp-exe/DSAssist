@@ -41,7 +41,7 @@ export default function ControlPanel() {
 
   return (
     <div className="p-3">
-        <div className="mb-2 font-semibold">Control Panel</div>
+        <div className="mb-2 font-semibold">Input</div>
 
         <div className="flex flex-col gap-3 mb-4">
             {(isStack || isQueue) && (
