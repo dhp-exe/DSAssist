@@ -3,6 +3,7 @@ import TopMenu from './components/layout/TopMenuBar'
 import ControlPanel from './components/layout/LeftControlPanel'
 import LogsPanel from './components/layout/RightLogPanel'
 import MainView from './components/layout/MainView'
+import { Analytics } from "@vercel/analytics/react"
 
 export default function App() {
   const [leftOpen, setLeftOpen] = useState(true)
