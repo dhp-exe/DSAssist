@@ -55,6 +55,8 @@ export default function App() {
 
         </div>
       </div>
+      {/* Vercel Analytics */}
+      <Analytics />
     </>
   )
 }
