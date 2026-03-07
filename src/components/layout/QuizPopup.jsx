@@ -62,7 +62,7 @@ export default function QuizPopup() {
                                 let tagColor = 'bg-slate-100 text-slate-700'; // Default gray
                                 
                                 if (tag === 'Easy') tagColor = 'bg-emerald-100 text-emerald-700';
-                                else if (tag === 'Medium') tagColor = 'bg-yellow-100 text-yellow-800';
+                                else if (tag === 'Medium') tagColor = 'bg-yellow-100 text-yellow-700';
                                 else if (tag === 'Hard') tagColor = 'bg-red-100 text-red-700';
                                 else if (i === 0) tagColor = 'bg-indigo-100 text-indigo-700'; // Keep 1st category tag blue
 
@@ -99,7 +99,7 @@ export default function QuizPopup() {
                                         onClick={() => !isAnswered && setAnswer(structure, currentIndex, i)} 
                                         className={`border-2 p-4 rounded-xl flex items-center transition-all ${!isAnswered ? 'cursor-pointer' : ''} ${boxClass}`}
                                     >
-                                        <span className="font-bold text-indigo-600 mr-4 w-6 text-lg shrink-0">{['A.', 'B.', 'C.', 'D.'][i]}</span>
+                                        <span className="font-bold text-indigo-650 mr-4 w-6 text-lg shrink-0">{['A.', 'B.', 'C.', 'D.'][i]}</span>
                                         <span className={`font-semibold ${textClass}`}>{opt}</span>
                                     </div>
                                 )

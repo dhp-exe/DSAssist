@@ -99,7 +99,7 @@ export default function HashVisualizer() {
                                             </svg>
                                             <motion.div 
                                                 layoutId={`hash-item-${val}`}
-                                                className="w-14 h-14 flex items-center justify-center border-2 border-indigo-300 bg-indigo-50 rounded-lg font-bold text-indigo-800 shadow-sm relative z-10"
+                                                className="w-14 h-14 flex items-center justify-center border-2 border-indigo-300 bg-indigo-100 rounded-lg font-bold text-indigo-800 shadow-sm relative z-10"
                                             >
                                                 {val}
                                             </motion.div>

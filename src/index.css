@@ -14,4 +14,57 @@ html, body, #root {
 @keyframes ds-scale-in { from { transform: scale(.6); opacity: 0 } to { transform: scale(1); opacity: 1 } }
 
 .visual-highlight { box-shadow: 0 8px 30px rgba(99,102,241,0.12); transform: translateY(-4px); }
+/* --- Global Dark Mode Overrides --- */
+html.dark {
+  background-color: #0f172a;
+  color: #f1f5f9;
+  color-scheme: dark;
+}
 
+.dark .bg-white { background-color: #1e293b !important; }
+.dark .bg-slate-50 { background-color: #0f172a !important; }
+.dark .bg-slate-100 { background-color: #334155 !important; }
+.dark .bg-slate-200 { background-color: #677486 !important; }
+
+
+.dark .text-slate-400 { color: #94a3b8 !important; }
+.dark .text-slate-450 {color: #171719 !important}
+.dark .text-slate-500 { color: #cbd5e1 !important; }
+.dark .text-slate-600 { color: #e2e8f0 !important; }
+.dark .text-slate-700 { color: #f1f5f9 !important; }
+.dark .text-slate-800 { color: #f8fafc !important; }
+
+.dark .border, .dark .border-b, .dark .border-t, .dark .border-l, .dark .border-r,
+.dark .border-slate-200, .dark .border-slate-300, .dark .border-slate-400 {
+  border-color: #475569 !important;
+}
+
+/* Form Inputs */
+.dark input, .dark select {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+.dark input:disabled {
+  background-color: #1e293b !important;
+  opacity: 0.6 !important;
+}
+
+/* Base Nodes / Accents adjustment for dark mode readability */
+.dark .bg-indigo-50 { background-color: rgba(79, 70, 229, 0.2) !important; border-color: #6366f1 !important; color: #a5b4fc !important; }
+.dark .bg-rose-50 { background-color: rgba(244, 63, 94, 0.2) !important; border-color: #f43f5e !important; color: #fda4af !important; }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.2) !important; border-color: #10b981 !important; color: #6ee7b7 !important; }
+.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.2) !important; border-color: #eab308 !important; color: #fde047 !important; }
+
+.dark .text-indigo-600, .dark .text-indigo-700, .dark .text-indigo-800 { color: #161d3d !important; }
+.dark .text-rose-600, .dark .text-rose-700, .dark .text-rose-800 { color: #773038 !important; }
+.dark .text-emerald-600, .dark .text-emerald-700, .dark .text-emerald-800 { color: #1a372c !important; }
+.dark .text-yellow-600, .dark .text-yellow-700, .dark .text-yellow-800 { color: #8c7918 !important; }
+.dark .text-indigo-650 {color: #969fc9 !important;}
+.dark .text-rose-650 {color: #d0989f !important;}
+.dark .text-emerald-650 {color: #95d1ba !important;}
+.dark .text-yellow-650 {color: #baac62 !important;}
+/* Backdrop */
+.dark .bg-slate-900\/60 {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}

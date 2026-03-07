@@ -51,8 +51,8 @@ export default function PlaybackToolbar() {
       </div>
       
       {/* History and Data Operations */}
-      <button onClick={replay} disabled={isGeneratingFrames || !latestOperation} className="px-2 py-1 md:px-3 md:py-1.5 text-xs md:text-sm rounded disabled:opacity-50 bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium ml-auto md:ml-2">Replay</button>
-      <button onClick={clearData} disabled={isGeneratingFrames} className="px-2 py-1 md:px-3 md:py-1.5 text-xs md:text-sm rounded disabled:opacity-50 bg-rose-50 text-rose-700 border border-rose-200 font-medium">Clear</button>
+      <button onClick={replay} disabled={isGeneratingFrames || !latestOperation} className="px-2 py-1 md:px-3 md:py-1.5 text-xs md:text-sm rounded disabled:opacity-50 bg-indigo-100 text-indigo-700 border border-indigo-200 font-medium ml-auto md:ml-2">Replay</button>
+      <button onClick={clearData} disabled={isGeneratingFrames} className="px-2 py-1 md:px-3 md:py-1.5 text-xs md:text-sm rounded disabled:opacity-50 bg-rose-100 text-rose-700 border border-rose-200 font-medium">Clear</button>
 
       {/* Speed Control */}
       <div className="ml-2 md:ml-auto text-xs md:text-sm text-slate-600 font-medium flex items-center gap-1 md:gap-2">

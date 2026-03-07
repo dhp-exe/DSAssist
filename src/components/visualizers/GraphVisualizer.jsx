@@ -5,7 +5,8 @@ import { useStore } from '../../store/useStore'
 export default function GraphVisualizer() {
     const isGeneratingFrames = useStore((s) => s.isGeneratingFrames)
     const isAnimating = useStore(s => s.isAnimating)
-    
+    const isDarkMode = useStore(s => s.isDarkMode)
+
     // Fetch raw state
     const rawIsDirected = useStore(s => s.isDirected)
     const rawIsWeighted = useStore(s => s.isWeighted)
@@ -183,7 +184,11 @@ export default function GraphVisualizer() {
                                     <polygon points="-12,-6 0,0 -12,6" transform={`translate(${endX},${endY}) rotate(${angle * 180 / Math.PI})`} fill={color} />
                                 )}
                                 {c.isWeighted && (
-                                    <text x={(startX + endX)/2} y={(startY + endY)/2 - 8} fill={isSelectedEdge ? "#4f46e5" : "#475569"} fontSize="14" fontWeight="bold" textAnchor="middle">
+                                    <text x={(startX + endX)/2} y={(startY + endY)/2 - 8} fill={
+                                        isSelectedEdge
+                                            ? "#6366f1"
+                                            : (isDarkMode ? "#cbd5f5" : "#475569")
+                                        } fontSize="14" fontWeight="bold" textAnchor="middle">
                                         {edge.weight}
                                     </text>
                                 )}
@@ -199,7 +204,7 @@ export default function GraphVisualizer() {
                     const isHighlighted = c.hn.includes(node.id);
                     const isSource = c.graphEdgeSource === node.id;
                     
-                    let bg = "bg-white border-slate-300";
+                    let bg = isDarkMode? "bg-slate-200 border-slate-300" : "bg-white border-slate-300";
                     let opacity = 1;
 
                     if (isSelected) bg = "bg-indigo-100 border-indigo-500 ring-4 ring-indigo-200 z-10";
@@ -226,7 +231,7 @@ export default function GraphVisualizer() {
                             }}
                             initial={false}
                             transition={{ type: "tween", duration: 0 }}
-                            className={`absolute w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-slate-700 shadow-sm z-10 transition-opacity duration-300 ${!isAnimating && c.graphMode === 'select' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${bg}`}
+                            className={`absolute w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-slate-450 shadow-sm z-10 transition-opacity duration-300 ${!isAnimating && c.graphMode === 'select' ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${bg}`}
                             onClick={(e) => handleNodeClick(node.id, e)}
                             style={{
                                 x: node.x,
@@ -348,7 +353,7 @@ export default function GraphVisualizer() {
                             <div className="flex gap-2 flex-wrap min-h-[32px]">
                                 <div className="text-slate-400 font-mono text-sm self-center">Front →</div>
                                 {c.q && c.q.map((item, i) => (
-                                    <div key={i} className="w-8 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded font-bold text-indigo-700 shadow-sm">{item}</div>
+                                    <div key={i} className="w-8 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded font-bold text-indigo-650 shadow-sm">{item}</div>
                                 ))}
                             </div>
                         </div>
@@ -360,7 +365,7 @@ export default function GraphVisualizer() {
                             <div className="flex gap-2 flex-wrap min-h-[32px]">
                                 <div className="text-slate-400 font-mono text-sm self-center">Top →</div>
                                 {c.s && [...c.s].reverse().map((item, i) => (
-                                    <div key={i} className="w-8 h-8 border bg-rose-50 border-rose-200 flex items-center justify-center rounded font-bold text-rose-700 shadow-sm">{item}</div>
+                                    <div key={i} className="w-8 h-8 border bg-rose-50 border-rose-200 flex items-center justify-center rounded font-bold text-rose-650 shadow-sm">{item}</div>
                                 ))}
                             </div>
                         </div>
@@ -372,7 +377,7 @@ export default function GraphVisualizer() {
                                 <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">PQ:</span>
                                 <div className="flex gap-2 flex-wrap min-h-[32px]">
                                     {c.pq && c.pq.map((item, i) => (
-                                        <div key={i} className="px-2 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded text-indigo-700 shadow-sm text-sm">
+                                        <div key={i} className="px-2 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded text-indigo-650 shadow-sm text-sm">
                                             <span className="font-bold">{item.id}</span>
                                             <span className="text-xs ml-1 font-mono">({item.dist === Infinity ? '∞' : item.dist})</span>
                                         </div>
@@ -398,7 +403,7 @@ export default function GraphVisualizer() {
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Edges (PQ):</span>
                             <div className="flex gap-2 flex-wrap min-h-[32px]">
                                 {c.pq && c.pq.map((item, i) => (
-                                    <div key={i} className="px-2 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded text-indigo-700 shadow-sm text-sm">
+                                    <div key={i} className="px-2 h-8 border bg-indigo-50 border-indigo-200 flex items-center justify-center rounded text-indigo-650 shadow-sm text-sm">
                                         <span className="font-bold">{item.source}-{item.target}</span>
                                         <span className="text-xs ml-1 font-mono">({item.weight})</span>
                                     </div>
@@ -438,7 +443,7 @@ export default function GraphVisualizer() {
                         <div className="flex flex-col gap-3">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Iteration:</span>
-                                <div className="flex gap-2 flex-wrap min-h-[32px] items-center text-sm font-bold text-indigo-700">
+                                <div className="flex gap-2 flex-wrap min-h-[32px] items-center text-sm font-bold text-indigo-650">
                                     {c.iteration > 0 ? `${c.iteration} / ${c.nodes.length - 1}` : 'Init'}
                                 </div>
                             </div>
@@ -463,7 +468,7 @@ export default function GraphVisualizer() {
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">Visited:</span>
                             <div className="flex gap-2 flex-wrap min-h-[32px]">
                                 {c.vis && c.vis.map((item, i) => (
-                                    <div key={i} className="w-8 h-8 border bg-emerald-50 border-emerald-300 flex items-center justify-center rounded-full font-bold text-emerald-800">{item}</div>
+                                    <div key={i} className="w-8 h-8 border bg-emerald-50 border-emerald-300 flex items-center justify-center rounded-full font-bold text-emerald-650">{item}</div>
                                 ))}
                             </div>
                         </div>
@@ -482,7 +487,7 @@ export default function GraphVisualizer() {
                     {(c.graphAlgorithm === 'Prim' || c.graphAlgorithm === 'Kruskal') && (
                         <div className="flex items-center gap-3 mt-1 pt-3 border-t min-h-[40px]">
                             <span className="text-xs font-bold uppercase text-slate-500 w-24 text-right shrink-0">MST Weight:</span>
-                            <div className="flex gap-2 text-emerald-600 font-bold tracking-widest flex-wrap text-lg">
+                            <div className="flex gap-2 text-emerald-650 font-bold tracking-widest flex-wrap text-lg">
                                 {c.mst ? c.edges.filter(e => c.mst.includes(e.id)).reduce((sum, e) => sum + (parseFloat(e.weight) || 0), 0) : 0}
                             </div>
                         </div>
