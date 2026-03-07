@@ -340,25 +340,49 @@ export const useStore = create((set, get) => ({
     },
 
     deleteItem: (value) => {
-    const index = get().data.indexOf(value);
-    if (index === -1) {
-        get().addLog(`Error: ${value} not found`);
-        return;
-    }
-    set((state) => {
-        const newData = [...state.data];
-        const newNodes = [...state.nodes];
+        const index = get().data.indexOf(value);
+        if (index === -1) {
+            get().addLog(`Error: ${value} not found`);
+            return;
+        }
+        set((state) => {
+            const newData = [...state.data];
+            const newNodes = [...state.nodes];
 
-        newData.splice(index, 1);
-        newNodes.splice(index, 1);
+            newData.splice(index, 1);
+            newNodes.splice(index, 1);
+            return {
+                data: newData, nodes: newNodes, treeActions: [...state.treeActions, { op: 'delete', val: value }],
+                searchLeft: null, searchRight: null, searchMid: null, searchResult: null,
+                sortI: null, sortJ: null, sortK: null, sortPivot: null, sortMin: null, sortedIndices: [], highlightIndex: -1
+            };
+        });
+        get().addLog(`Deleted ${value}`);
+    },
+    // --- QUIZ STATE ENGINE ---
+    isQuizOpen: false,
+    setIsQuizOpen: (v) => set({ isQuizOpen: v }),
+    quizProgress: {}, // Persists answers per structure: { 'ArrayList': { currentIndex: 0, answers: { 0: 1, 2: 3 } } }
+    
+    setQuizAnswer: (structure, qIndex, aIndex) => set((state) => {
+        const prog = state.quizProgress[structure] || { currentIndex: 0, answers: {} };
         return {
-            data: newData, nodes: newNodes, treeActions: [...state.treeActions, { op: 'delete', val: value }],
-            searchLeft: null, searchRight: null, searchMid: null, searchResult: null,
-            sortI: null, sortJ: null, sortK: null, sortPivot: null, sortMin: null, sortedIndices: [], highlightIndex: -1
+            quizProgress: {
+                ...state.quizProgress,
+                [structure]: { ...prog, answers: { ...prog.answers, [qIndex]: aIndex } }
+            }
         };
-    });
-    get().addLog(`Deleted ${value}`);
-},
+    }),
+    
+    setQuizIndex: (structure, newIndex) => set((state) => {
+        const prog = state.quizProgress[structure] || { currentIndex: 0, answers: {} };
+        return {
+            quizProgress: {
+                ...state.quizProgress,
+                [structure]: { ...prog, currentIndex: newIndex }
+            }
+        };
+    }),
 
     // --- PUBLIC ACTIONS ---
     addAtIndex: (index, value) => get()._runWithFrames(get()._addAtIndex, 'addAtIndex', [index, value]),

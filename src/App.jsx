@@ -3,6 +3,7 @@ import TopMenu from './components/layout/TopMenuBar'
 import ControlPanel from './components/layout/LeftControlPanel'
 import LogsPanel from './components/layout/RightLogPanel'
 import MainView from './components/layout/MainView'
+import QuizPopup from './components/layout/QuizPopup'
 import { Analytics } from "@vercel/analytics/react"
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
 
   return (
     <>
+    <QuizPopup />
       {/* Mobile Portrait Overlay: Forces user to rotate phone */}
       <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex-col items-center justify-center p-6 text-center hidden max-md:portrait:flex">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-6 animate-bounce">
