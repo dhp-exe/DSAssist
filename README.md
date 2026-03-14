@@ -120,3 +120,6 @@ This project is optimized for deployment on Vercel.
 ## 📄 License
 
 This project is licensed under the MIT License.
+
+You are free to use, modify, and distribute this software for educational purposes, provided that proper
+credit is given to the original author.
